@@ -6,31 +6,29 @@ from bot.loader import dp, bot
 from bot import auth
 
 
-async def on_startup_event():
-    logger.info('Bot started')
-
-
-async def on_shutdown_event():
-    logger.info('Bot stopped')
-
-
 def start_bot():
     try:
-        dp.startup.register(on_startup_event)
-        dp.shutdown.register(on_shutdown_event)
         dp.run_polling(bot)
     except Exception as err:
         logger.critical(f'Bot failed to start: {err}')
 
 
-@dp.message(Command(commands=['start', 'help']))
+@dp.message(Command(commands=['start']))
 async def send_welcome(message: types.Message):
-    """
-    This handler will be called when user sends `/start` or `/help` command
-    """
-    message_body = "Hi\!\nI'm EchoBot\!\nPowered by aiogram\."
-    await message.reply(message_body)
-    logger.info(f'Replied message:\n {message_body}')
+    message_body = '''
+        Hi there\!\nI'm innosport\+ bot\!\nI can suggest you a training for you\!
+    '''
+    await message.answer(message_body)
+    logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /start command')
+
+
+@dp.message(Command(commands=['help']))
+async def send_welcome(message: types.Message):
+    message_body = '''
+        I'm innosport\+ bot\!\nUse /suggest\_training command to get a training\!
+    '''
+    await message.answer(message_body)
+    logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /help command')
 
 
 @dp.message(Command(commands=['me']))
