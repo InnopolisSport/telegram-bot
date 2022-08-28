@@ -31,8 +31,11 @@ def escape_to_markdownv2(text: str):
 @dp.message(Command(commands=['me']))
 async def get_me(message: types.Message):
     status_code, json = await get_auth_status(message)
-    await message.answer(escape_to_markdownv2(json['detail']))
-    logger.info(f'Replied message: {status_code} {json}')
+    if status_code == 403:
+        await message.answer(escape_to_markdownv2(json['detail']))
+        logger.info(f'Replied message: {json}')
+    elif status_code == 200:
+        pass  # TODO: parse json get_me
 
 
 @dp.message(Command(commands=['start']))
