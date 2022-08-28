@@ -17,7 +17,7 @@ def start_bot():
 
 async def get_auth_status(message: types.Message):
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get('http://localhost/api/profile/history_with_self/15') as response:  # TODO change the url
+        async with session.get('http://localhost/api/profile/me') as response:
             json = await response.json()
             status_code = response.status
     return status_code, json
@@ -35,7 +35,8 @@ async def get_me(message: types.Message):
         await message.answer(escape_to_markdownv2(json['detail']))
         logger.info(f'Replied message: {json}')
     elif status_code == 200:
-        pass  # TODO: parse json get_me
+        await message.answer(escape_to_markdownv2(json['first_name'] + ' ' + json['last_name'] + '\n' + json['email']))
+        logger.info(f'Replied message: {json}')
 
 
 @dp.message(Command(commands=['start']))
