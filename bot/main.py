@@ -1,4 +1,6 @@
 import asyncio
+import re
+
 from aiogram import types
 from aiogram.filters import Command
 from loguru import logger
@@ -11,6 +13,21 @@ def start_bot():
         dp.run_polling(bot)
     except Exception as err:
         logger.critical(f'Bot failed to start: {err}')
+
+
+async def get_auth_status(message: types.Message):
+    async with auth.SportTelegramSession(message.from_user) as session:
+        async with session.get('http://localhost/api/profile/history_with_self/15') as response:  # TODO change the url
+            json = await response.json()
+            status_code = response.status
+    return status_code, json
+
+
+@dp.message(Command(commands=['me']))
+async def get_me(message: types.Message):
+    status_code, json = await get_auth_status(message)
+    await message.reply(re.escape(json['detail']))
+    logger.info(f'Replied message: {status_code} {json}')
 
 
 @dp.message(Command(commands=['start']))
@@ -31,17 +48,6 @@ async def send_welcome(message: types.Message):
     logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /help command')
 
 
-@dp.message(Command(commands=['me']))
-async def get_me(message: types.Message):
-    async with auth.SportTelegramSession(message.from_user) as session:
-        await asyncio.sleep(10)
-        async with session.get('http://localhost/api/profile/history_with_self/15') as response:
-            text = await response.text()
-    print(text)
-    await message.reply(text)
-    logger.info(f'Replied message:\n {text}')
-
-
 @dp.message()
 async def echo(message: types.Message):
     """
@@ -49,8 +55,6 @@ async def echo(message: types.Message):
     By default, message handler will handle all message types (like text, photo, sticker and etc.)
     """
     try:
-        # Send copy of the received message
         await message.send_copy(chat_id=message.chat.id)
     except TypeError:
-        # But not all the types is supported to be copied so need to handle it
         await message.answer("Nice try!")
