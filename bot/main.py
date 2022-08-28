@@ -37,20 +37,31 @@ async def get_me(message: types.Message):
 
 @dp.message(Command(commands=['start']))
 async def send_welcome(message: types.Message):
-    message_body = '''
-        Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
-    '''
-    await message.answer(escape_to_markdownv2(message_body))
-    logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /start command')
+    status_code, _ = await get_auth_status(message)
+    if status_code == 403:
+        await message.answer('''
+            Hi there\!\nYou are not authorized\. Please authorize at [sport\.innopolis\.university](https://sport.innopolis.university/)\.
+        ''')
+    elif status_code == 200:
+        await message.answer(escape_to_markdownv2('''
+            Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
+        '''))
+    logger.info(
+        f'{message.from_user.full_name} (@{message.from_user.username}) sent /start command (auth status: {status_code})')
 
 
 @dp.message(Command(commands=['help']))
 async def send_welcome(message: types.Message):
-    message_body = '''
-        I'm innosport+ bot!\nUse /suggest_training command to get a training!
-    '''
-    await message.answer(escape_to_markdownv2(message_body))
-    logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /help command')
+    status_code, _ = await get_auth_status(message)
+    if status_code == 403:
+        await message.answer('''
+            You are not authorized\. Please authorize at [sport\.innopolis\.university](https://sport.innopolis.university/)\.
+        ''')
+    elif status_code == 200:
+        await message.answer(escape_to_markdownv2('''
+        Use /suggest_training command to get a training!
+    '''))
+    logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /help command (auth status: {status_code})')
 
 
 @dp.message()
