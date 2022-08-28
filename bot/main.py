@@ -23,28 +23,33 @@ async def get_auth_status(message: types.Message):
     return status_code, json
 
 
+def escape_to_markdownv2(text: str):
+    #  To be escaped: '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
+    return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
+
+
 @dp.message(Command(commands=['me']))
 async def get_me(message: types.Message):
     status_code, json = await get_auth_status(message)
-    await message.reply(re.escape(json['detail']))
+    await message.answer(escape_to_markdownv2(json['detail']))
     logger.info(f'Replied message: {status_code} {json}')
 
 
 @dp.message(Command(commands=['start']))
 async def send_welcome(message: types.Message):
     message_body = '''
-        Hi there\!\nI'm innosport\+ bot\!\nI can suggest you a training for you\!
+        Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
     '''
-    await message.answer(message_body)
+    await message.answer(escape_to_markdownv2(message_body))
     logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /start command')
 
 
 @dp.message(Command(commands=['help']))
 async def send_welcome(message: types.Message):
     message_body = '''
-        I'm innosport\+ bot\!\nUse /suggest\_training command to get a training\!
+        I'm innosport+ bot!\nUse /suggest_training command to get a training!
     '''
-    await message.answer(message_body)
+    await message.answer(escape_to_markdownv2(message_body))
     logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /help command')
 
 
