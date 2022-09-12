@@ -1,4 +1,3 @@
-import asyncio
 import re
 
 from aiogram import types
@@ -39,19 +38,19 @@ async def get_me(message: types.Message):
         logger.info(f'Replied message: {json}')
 
 
-@dp.message(Command(commands=['start']))
-async def send_welcome(message: types.Message):
-    status_code, _ = await get_auth_status(message)
-    if status_code == 403:
-        await message.answer('''
-            Hi there\!\nYou are not authorized\. Please authorize at [sport\.innopolis\.university](https://sport.innopolis.university/)\.
-        ''')
-    elif status_code == 200:
-        await message.answer(escape_to_markdownv2('''
-            Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
-        '''))
-    logger.info(
-        f'{message.from_user.full_name} (@{message.from_user.username}) sent /start command (auth status: {status_code})')
+# @dp.message(Command(commands=['start']))
+# async def send_welcome(message: types.Message):
+#     status_code, _ = await get_auth_status(message)
+#     if status_code == 403:
+#         await message.answer('''
+#             Hi there\!\nYou are not authorized\. Please authorize at [sport\.innopolis\.university](https://sport.innopolis.university/)\.
+#         ''')
+#     elif status_code == 200:
+#         await message.answer(escape_to_markdownv2('''
+#             Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
+#         '''))
+#     logger.info(
+#         f'{message.from_user.full_name} (@{message.from_user.username}) sent /start command (auth status: {status_code})')
 
 
 @dp.message(Command(commands=['help']))
@@ -68,13 +67,13 @@ async def send_welcome(message: types.Message):
     logger.info(f'{message.from_user.full_name} (@{message.from_user.username}) sent /help command (auth status: {status_code})')
 
 
-@dp.message()
-async def echo(message: types.Message):
-    """
-    Handler will forward received message back to the sender
-    By default, message handler will handle all message types (like text, photo, sticker and etc.)
-    """
-    try:
-        await message.send_copy(chat_id=message.chat.id)
-    except TypeError:
-        await message.answer("Nice try!")
+# @dp.message()
+# async def echo(message: types.Message):
+#     """
+#     Handler will forward received message back to the sender
+#     By default, message handler will handle all message types (like text, photo, sticker and etc.)
+#     """
+#     try:
+#         await message.send_copy(chat_id=message.chat.id)
+#     except TypeError:
+#         await message.answer("Nice try!")
