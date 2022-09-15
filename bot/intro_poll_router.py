@@ -1,22 +1,27 @@
-import asyncio
 import logging
-import sys
-from os import getenv
 from typing import Any, Dict
 
-from aiogram import Bot, Dispatcher, F, Router, html
+from aiogram import F, Router, html
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, \
-    InlineKeyboardButton
-
-form_router = Router()
+from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 
-class Form(StatesGroup):
-    name = State()
-    like_bots = State()
-    language = State()
+intro_poll_router = Router()
+
+
+class IntroPollStates(StatesGroup):
+    age = State()
+    sex = State()
+    height = State()
+    weight = State()
+    medical_group = State()
+    sport_experience = State()
+    sport_training_frequency = State()
+    sport_training_time = State()
+    sport_desire_level = State()
+    pulse_rest = State()
+
 
 
 @form_router.message(commands=["start"])
@@ -24,14 +29,7 @@ async def command_start(message: Message, state: FSMContext) -> None:
     await state.set_state(Form.name)
     await message.answer(
         "Hi there! What's your name?",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="Yes", url='tg://user?id=sm1rk'),
-                    InlineKeyboardButton(text="No", url='tg://user?id=sm1rk'),
-                ]
-            ],
-        ),
+        reply_markup=ReplyKeyboardRemove(),
     )
 
 

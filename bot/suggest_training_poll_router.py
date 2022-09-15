@@ -7,13 +7,14 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 
-intro_router = Router()
+suggest_training_poll_router = Router()
 
 
-class IntroStates(StatesGroup):
-    name = State()
-    like_bots = State()
-    language = State()
+class SuggestTrainingPollStates(StatesGroup):
+    goal = State()
+    sport = State()
+    training_time = State()
+
 
 
 @form_router.message(commands=["start"])
