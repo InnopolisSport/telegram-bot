@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
+from bot.main import PASSED_INTRO_POLL
 
 intro_poll_router = Router()
 
@@ -23,10 +24,12 @@ class IntroPollStates(StatesGroup):
     pulse_rest = State()
 
 
-
-@form_router.message(commands=["start"])
+@intro_poll_router.message(F.text.casefold() == "Suggest training")
 async def command_start(message: Message, state: FSMContext) -> None:
-    await state.set_state(Form.name)
+    if not PASSED_INTRO_POLL:
+        pass
+
+    await state.set_state(IntroPollStates.age)
     await message.answer(
         "Hi there! What's your name?",
         reply_markup=ReplyKeyboardRemove(),

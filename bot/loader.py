@@ -1,6 +1,7 @@
 from aiogram import Bot, Dispatcher
 
 from bot.form_router import form_router
+from bot.suggest_training_poll_router import suggest_training_poll_router
 from settings import API_TOKEN
 from loguru import logger
 
@@ -22,4 +23,5 @@ dp.startup.register(on_startup_event)
 dp.shutdown.register(on_shutdown_event)
 # Include routers
 # dp.include_router(intro_router)
-dp.include_router(form_router)
+# dp.include_router(form_router)
+dp.include_router(suggest_training_poll_router)
