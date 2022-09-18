@@ -7,7 +7,6 @@ from bot import auth
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, \
     InlineKeyboardButton
 
-PASSED_INTRO_POLL = False
 
 def start_bot():
     try:
@@ -18,7 +17,7 @@ def start_bot():
 
 async def get_auth_status(message: Message):
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get('http://localhost/api/profile/me') as response:
+        async with session.get('https://474d-188-130-155-148.eu.ngrok.io/api/profile/me') as response:
             json = await response.json()
             status_code = response.status
     return status_code, json
@@ -64,7 +63,7 @@ async def send_welcome(message: Message):
                              resize_keyboard=True,
                          ))
     logger.info(
-        f'{message.from_user.full_name} (@{message.from_user.username}) sent /start command (auth status: {status_code})')
+        f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id}) sent /start command (auth status: {status_code})')
 
 
 @dp.message(Command(commands=['help']))

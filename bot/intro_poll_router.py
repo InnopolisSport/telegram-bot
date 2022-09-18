@@ -1,14 +1,13 @@
-import logging
-from typing import Any, Dict
-
 from aiogram import F, Router, html
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
-from bot.main import PASSED_INTRO_POLL
+from bot import auth
+from bot.filters import any_digits
 
 intro_poll_router = Router()
+INTRO_POLL_NAME = "intro"
 
 
 class IntroPollStates(StatesGroup):
@@ -23,101 +22,242 @@ class IntroPollStates(StatesGroup):
     sport_desire_level = State()
     pulse_rest = State()
 
+    finish = State()
 
-@intro_poll_router.message(F.text.casefold() == "Suggest training")
-async def command_start(message: Message, state: FSMContext) -> None:
-    if not PASSED_INTRO_POLL:
-        pass
 
-    await state.set_state(IntroPollStates.age)
+def prepare_intro_poll_result(data: dict) -> dict:
+    pass
+
+
+@intro_poll_router.message(IntroPollStates.age, F.text.casefold() == "ок")
+async def process_age(message: Message, state: FSMContext) -> None:
+    await state.set_state(IntroPollStates.sex)
     await message.answer(
-        "Hi there! What's your name?",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
-
-@form_router.message(commands=["cancel"])
-@form_router.message(F.text.casefold() == "cancel")
-async def cancel_handler(message: Message, state: FSMContext) -> None:
-    """
-    Allow user to cancel any action
-    """
-    current_state = await state.get_state()
-    if current_state is None:
-        return
-
-    logging.info("Cancelling state %r", current_state)
-    await state.clear()
-    await message.answer(
-        "Cancelled.",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
-
-@form_router.message(Form.name)
-async def process_name(message: Message, state: FSMContext) -> None:
-    await state.update_data(name=message.text)
-    await state.set_state(Form.like_bots)
-    await message.answer(
-        f"Nice to meet you, {html.quote(message.text)}!\nDid you like to write bots?",
+        "AGE",
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
-                    KeyboardButton(text="Yes"),
-                    KeyboardButton(text="No"),
-                ]
+                    KeyboardButton(text="20-24"),
+                ],
+                [
+                    KeyboardButton(text="<20"),
+                    KeyboardButton(text=">24"),
+                ],
             ],
             resize_keyboard=True,
         ),
     )
 
 
-@form_router.message(Form.like_bots, F.text.casefold() == "no")
-async def process_dont_like_write_bots(message: Message, state: FSMContext) -> None:
-    data = await state.get_data()
-    await state.clear()
+@intro_poll_router.message(IntroPollStates.sex)
+async def process_sex(message: Message, state: FSMContext) -> None:
+    await state.update_data(age=message.text)  # TODO: Parse for backend into enum
+    await state.set_state(IntroPollStates.height)
     await message.answer(
-        "Not bad not terrible.\nSee you soon.",
+        "SEX",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Мужской"),
+                    KeyboardButton(text="Женский"),
+                ],
+                [
+                    KeyboardButton(text="Другой"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@intro_poll_router.message(IntroPollStates.height)
+async def process_height(message: Message, state: FSMContext) -> None:
+    await state.update_data(sex=message.text)  # TODO: Parse correctly
+    await state.set_state(IntroPollStates.weight)
+    await message.answer(
+        "HEIGHT CM",
         reply_markup=ReplyKeyboardRemove(),
     )
-    await show_summary(message=message, data=data, positive=False)
 
 
-@form_router.message(Form.like_bots, F.text.casefold() == "yes")
-async def process_like_write_bots(message: Message, state: FSMContext) -> None:
-    await state.set_state(Form.language)
-
-    await message.reply(
-        "Cool! I'm too!\nWhat programming language did you use for it?",
+@intro_poll_router.message(IntroPollStates.weight, any_digits)
+async def process_weight(message: Message, state: FSMContext) -> None:
+    await state.update_data(height=int(message.text))  # TODO: Parse correctly (what if not int?)
+    await state.set_state(IntroPollStates.medical_group)
+    await message.answer(
+        "WEIGHT KG",
         reply_markup=ReplyKeyboardRemove(),
     )
 
 
-@form_router.message(Form.like_bots)
-async def process_unknown_write_bots(message: Message, state: FSMContext) -> None:
-    await message.reply("I don't understand you :(")
-
-
-@form_router.message(Form.language)
-async def process_language(message: Message, state: FSMContext) -> None:
-    data = await state.update_data(language=message.text)
-    await state.clear()
-    text = (
-        "Thank for all! Python is in my hearth!\nSee you soon."
-        if message.text.casefold() == "python"
-        else "Thank for information!\nSee you soon."
+@intro_poll_router.message(IntroPollStates.weight)
+async def process_weight(message: Message, state: FSMContext) -> None:
+    await message.answer(
+        "TRY HEIGHT CM AGAIN",
+        reply_markup=ReplyKeyboardRemove(),
     )
-    await message.answer(text)
-    await show_summary(message=message, data=data)
 
 
-async def show_summary(message: Message, data: Dict[str, Any], positive: bool = True) -> None:
-    name = data["name"]
-    language = data.get("language", "<something unexpected>")
-    text = f"I'll keep in mind that, {html.quote(name)}, "
-    text += (
-        f"you like to write bots with {html.quote(language)}."
-        if positive
-        else "you don't like to write bots, so sad..."
+@intro_poll_router.message(IntroPollStates.medical_group, any_digits)
+async def process_medical_group(message: Message, state: FSMContext) -> None:
+    await state.update_data(weight=int(message.text))  # TODO: Parse correctly (what if not int?)
+    await state.set_state(IntroPollStates.sport_experience)
+    await message.answer(
+        "MEDICAL GROUP",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="I"),  # TODO: Parse from sport site?
+                    KeyboardButton(text="II"),
+                    KeyboardButton(text="III"),
+                ],
+                [
+                    KeyboardButton(text="Не знаю"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
     )
-    await message.answer(text=text, reply_markup=ReplyKeyboardRemove())
+
+
+@intro_poll_router.message(IntroPollStates.medical_group)
+async def process_weight(message: Message, state: FSMContext) -> None:
+    await message.answer(
+        "TRY WEIGHT KG AGAIN",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
+@intro_poll_router.message(IntroPollStates.sport_experience)
+async def process_sport_experience(message: Message, state: FSMContext) -> None:
+    await state.update_data(medical_group=message.text)  # TODO: Parse correctly
+    await state.set_state(IntroPollStates.sport_training_frequency)
+    await message.answer(
+        "SPORT EXPERIENCE",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Не было никогда"),
+                    KeyboardButton(text="Есть регулярный"),
+                ],
+                [
+                    KeyboardButton(text="Был больше 3 лет назад"),
+                ],
+                [
+                    KeyboardButton(text="Был меньше 1 года назад"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@intro_poll_router.message(IntroPollStates.sport_training_frequency)
+async def process_sport_training_frequency(message: Message, state: FSMContext) -> None:
+    await state.update_data(sport_experience=message.text)  # TODO: Parse correctly
+    await state.set_state(IntroPollStates.sport_training_time)
+    await message.answer(
+        "SPORT TRAINING FREQUENCY",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="0-1 раз"),
+                    KeyboardButton(text="2-3 раза"),
+                    KeyboardButton(text=">4 раз"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@intro_poll_router.message(IntroPollStates.sport_training_time)
+async def process_sport_training_time(message: Message, state: FSMContext) -> None:
+    await state.update_data(sport_training_frequency=message.text)  # TODO: Parse correctly
+    await state.set_state(IntroPollStates.sport_desire_level)
+    await message.answer(
+        "SPORT TRAINING TIME",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="до 30 минут"),
+                ],
+                [
+                    KeyboardButton(text="30-60 минут"),
+                ],
+                [
+                    KeyboardButton(text="свыше 60 минут"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@intro_poll_router.message(IntroPollStates.sport_desire_level)
+async def process_sport_desire_level(message: Message, state: FSMContext) -> None:
+    await state.update_data(sport_training_time=message.text)  # TODO: Parse correctly
+    await state.set_state(IntroPollStates.pulse_rest)
+    await message.answer(
+        "SPORT DESIRE LEVEL",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="тренировался легко, без отдышки и потоотделения"),
+                ],
+                [
+                    KeyboardButton(text="тренировался до появления первой отдышки и потоотделения"),
+                ],
+                [
+                    KeyboardButton(text="тренировался на полную, потел и едва дышал"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@intro_poll_router.message(IntroPollStates.pulse_rest)
+async def process_pulse_rest(message: Message, state: FSMContext) -> None:
+    await state.update_data(sport_desire_level=message.text)
+    await state.set_state(IntroPollStates.finish)
+    await message.answer(
+        "PULSE REST",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="менее 60 уд/мин"),
+                ],
+                [
+                    KeyboardButton(text="60-90 уд/мин"),
+                ],
+                [
+                    KeyboardButton(text="более 90 уд/мин"),
+                ],
+                [
+                    KeyboardButton(text="какой-то неправильный"),
+                    KeyboardButton(text="не знаю"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@intro_poll_router.message(IntroPollStates.finish)
+async def process_finish(message: Message, state: FSMContext) -> None:
+    await state.update_data(pulse_rest=message.text)
+    data = await state.get_data()
+    res = prepare_intro_poll_result(data)
+    async with auth.SportTelegramSession(message.from_user) as session:
+        async with session.post(f'https://474d-188-130-155-148.eu.ngrok.io/api/training_suggestor/poll_result', data=res) as response:
+            json = await response.json()
+            status_code = response.status
+    if status_code == 200:
+        await message.answer(
+            "INTRO POLL END" + str(json),
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        # Go to suggest training
+        from bot.suggest_training_poll_router import command_suggest_training
+        await command_suggest_training(message, state)
