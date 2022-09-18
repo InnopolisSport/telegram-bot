@@ -12,16 +12,13 @@ suggest_training_poll_router = Router()
 class SuggestTrainingPollStates(StatesGroup):
     goal = State()
     sport = State()
-    training_time = State()
-    training = State()
-
-    training_understood = State()
-    fitness_info = State()
+    training = State()  # includes training_time saving
 
 
 @suggest_training_poll_router.message(commands=["suggest_training"])
 @suggest_training_poll_router.message(F.text.casefold() == "suggest training")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
+    print(F.text)
     await state.set_state(SuggestTrainingPollStates.goal)
     await message.answer(
         "GOAL",
@@ -62,7 +59,7 @@ async def process_goal(message: Message, state: FSMContext) -> None:
 @suggest_training_poll_router.message(SuggestTrainingPollStates.sport)
 async def process_sport(message: Message, state: FSMContext) -> None:
     await state.update_data(sport=message.text)  # TODO: Parse for backend into enum
-    await state.set_state(SuggestTrainingPollStates.training_time)
+    await state.set_state(SuggestTrainingPollStates.training)
     await message.answer(
         "TRAINING_TIME",
         reply_markup=ReplyKeyboardMarkup(
@@ -82,14 +79,10 @@ async def process_sport(message: Message, state: FSMContext) -> None:
     )
 
 
-@suggest_training_poll_router.message(SuggestTrainingPollStates.training_time)
-async def process_training_time(message: Message, state: FSMContext) -> None:
-    await state.update_data(training_time=int(message.text) * 60)  # TODO: Parse for backend correctly
-    await state.set_state(SuggestTrainingPollStates.training)
-
-
 @suggest_training_poll_router.message(SuggestTrainingPollStates.training)
 async def process_training(message: Message, state: FSMContext) -> None:
+    # Parsing training_time
+    await state.update_data(training_time=int(message.text) * 60)  # TODO: Parse for backend correctly
     # TODO: Add call to backend suggest_training()
     # TODO: Parse backend response into beautiful training
     data = await state.get_data()
@@ -111,10 +104,8 @@ async def process_training(message: Message, state: FSMContext) -> None:
     )
 
 
-@suggest_training_poll_router.message(SuggestTrainingPollStates.fitness_info,
-                                      F.text.casefold() == "объясни, что это значит")
-async def process_training_time(message: Message, state: FSMContext) -> None:
-    await state.set_state(SuggestTrainingPollStates.training_understood)
+@suggest_training_poll_router.message(F.text.casefold() == "объясни, что это значит")
+async def process_fitness_info(message: Message, state: FSMContext) -> None:
     await message.answer(
         "FITNESS INFO",
         reply_markup=ReplyKeyboardMarkup(
@@ -128,8 +119,9 @@ async def process_training_time(message: Message, state: FSMContext) -> None:
     )
 
 
-@suggest_training_poll_router.message(SuggestTrainingPollStates.training_understood, F.text.casefold() == "ок, все понятно")
-async def process_training_time(message: Message, state: FSMContext) -> None:
+@suggest_training_poll_router.message(F.text.casefold() == "ок, все понятно")
+@suggest_training_poll_router.message(F.text.casefold() == "ок, понял")
+async def process_training_understood(message: Message, state: FSMContext) -> None:
     # await state.set_state(Menu.main)  # TODO: Add main menu state
     await message.answer(
         "TRAINING UNDERSTOOD",
