@@ -1,4 +1,4 @@
-from aiogram import F, Router, html
+from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -8,6 +8,7 @@ from bot.filters import any_digits
 
 intro_poll_router = Router()
 INTRO_POLL_NAME = "intro"
+INTRO_POLL = dict()
 
 
 class IntroPollStates(StatesGroup):
@@ -25,15 +26,45 @@ class IntroPollStates(StatesGroup):
     finish = State()
 
 
+async def fetch_intro_poll(message: Message) -> None:
+    async with auth.SportTelegramSession(message.from_user) as session:
+        async with session.get(f'http://innosport.batalov.me/api/poll/{INTRO_POLL_NAME}') as response:
+            json = await response.json()
+            status_code = response.status
+    if status_code == 200:
+        INTRO_POLL = dict(json)
+
+
 def prepare_intro_poll_result(data: dict) -> dict:
     pass
 
 
-@intro_poll_router.message(IntroPollStates.age, F.text.casefold() == "ок")
+@intro_poll_router.message(commands=["intro_poll"])
+async def start_intro_poll(message: Message, state: FSMContext) -> None:
+    await state.update_data({})  # to ensure that we are starting from the beginning
+    # await fetch_intro_poll(message)
+    await state.set_state(IntroPollStates.age)
+    await message.answer(
+        'INTRO POLL STARTS',  # INTRO_POLL.get('first').get('text')
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="ок"),
+                ],
+                [
+                    KeyboardButton(text="назад"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@intro_poll_router.message(IntroPollStates.age, F.text.casefold() == "ок")  # INTRO_POLL.get("first").get("answer")[0]
 async def process_age(message: Message, state: FSMContext) -> None:
     await state.set_state(IntroPollStates.sex)
     await message.answer(
-        "AGE",
+        "AGE",  # INTRO_POLL.get('age').get('text')
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -219,7 +250,7 @@ async def process_sport_desire_level(message: Message, state: FSMContext) -> Non
 
 @intro_poll_router.message(IntroPollStates.pulse_rest)
 async def process_pulse_rest(message: Message, state: FSMContext) -> None:
-    await state.update_data(sport_desire_level=message.text)
+    await state.update_data(sport_desire_level=message.text)  # TODO: Parse correctly
     await state.set_state(IntroPollStates.finish)
     await message.answer(
         "PULSE REST",
@@ -249,15 +280,15 @@ async def process_finish(message: Message, state: FSMContext) -> None:
     await state.update_data(pulse_rest=message.text)
     data = await state.get_data()
     res = prepare_intro_poll_result(data)
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.post(f'https://474d-188-130-155-148.eu.ngrok.io/api/training_suggestor/poll_result', data=res) as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
-        await message.answer(
-            "INTRO POLL END" + str(json),
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        # Go to suggest training
-        from bot.suggest_training_poll_router import command_suggest_training
-        await command_suggest_training(message, state)
+    # async with auth.SportTelegramSession(message.from_user) as session:
+    #     async with session.post(f'http://innosport.batalov.me/api/training_suggestor/poll_result', data=res) as response:
+    #         status_code = response.status
+    #         json = await response.json()
+    # if status_code == 200:
+    await message.answer(
+        "INTRO POLL END",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    # Go to suggest training
+    from bot.routers.suggest_training_poll_router import command_suggest_training
+    await command_suggest_training(message, state)

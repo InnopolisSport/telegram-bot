@@ -1,6 +1,8 @@
 import re
 
+from aiogram import F
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from loguru import logger
 from bot.loader import dp, bot
 from bot import auth
@@ -17,7 +19,7 @@ def start_bot():
 
 async def get_auth_status(message: Message):
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get('https://474d-188-130-155-148.eu.ngrok.io/api/profile/me') as response:
+        async with session.get('http://innosport.batalov.me/api/profile/me') as response:
             json = await response.json()
             status_code = response.status
     return status_code, json
@@ -39,35 +41,52 @@ async def get_me(message: Message):
         logger.info(f'Replied message: {json}')
 
 
+# Main menu
 @dp.message(Command(commands=['start']))
-async def send_welcome(message: Message):
-    status_code, _ = await get_auth_status(message)
-    # if status_code == 403:
-    #     await message.answer('''
-    #         Hi there\!\nYou are not authorized\. Please authorize at [sport\.innopolis\.university](https://sport.innopolis.university/)\.
-    #     ''')
-    # elif status_code == 200:
-    await message.answer(escape_to_markdownv2('''
-            Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
-        '''),
-                         reply_markup=ReplyKeyboardMarkup(
-                             keyboard=[
-                                 [
-                                     KeyboardButton(text="Suggest training"),
+@dp.message(F.text.casefold() == "главное меню")
+async def command_start(message: Message, state: FSMContext):
+    await state.clear()
+    status_code, json = await get_auth_status(message)
+    if message:
+        # if status_code == 403:
+        #     await message.answer('''
+        #         Hi there\!\nYou are not authorized\. Please authorize at [sport\.innopolis\.university](https://sport.innopolis.university/)\.
+        #     ''')
+        # elif status_code == 200:
+        await message.answer(escape_to_markdownv2('''
+                Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
+            '''),
+                             reply_markup=ReplyKeyboardMarkup(
+                                 keyboard=[
+                                     [
+                                         KeyboardButton(text="Suggest training"),
+                                     ],
+                                     [
+                                         KeyboardButton(text="Show schedule"),
+                                         KeyboardButton(text="Check in for training"),
+                                     ]
                                  ],
-                                 [
-                                     KeyboardButton(text="Show schedule"),
-                                     KeyboardButton(text="Check in for training"),
-                                 ]
-                             ],
-                             resize_keyboard=True,
-                         ))
+                                 resize_keyboard=True,
+                             ))
+    else:
+        await message.answer('', reply_markup=ReplyKeyboardMarkup(
+                                 keyboard=[
+                                     [
+                                         KeyboardButton(text="Suggest training"),
+                                     ],
+                                     [
+                                         KeyboardButton(text="Show schedule"),
+                                         KeyboardButton(text="Check in for training"),
+                                     ]
+                                 ],
+                                 resize_keyboard=True,
+                             ))
     logger.info(
-        f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id}) sent /start command (auth status: {status_code})')
+        f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id}) sent /start command (auth status: {status_code}, json: {json})')
 
 
 @dp.message(Command(commands=['help']))
-async def send_welcome(message: Message):
+async def command_help(message: Message):
     status_code, _ = await get_auth_status(message)
     if status_code == 403:
         await message.answer('''

@@ -1,13 +1,11 @@
-import logging
 from typing import Any, Dict
 
-from aiogram import F, Router, html
+from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
-
+from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
+from loguru import logger
 from bot import auth
-from bot.intro_poll_router import INTRO_POLL_NAME
 
 INITIAL_WORKING_LOAD = 100_000
 
@@ -21,31 +19,50 @@ class SuggestTrainingPollStates(StatesGroup):
     training = State()  # includes training_time saving
 
 
+def parse_suggested_training(suggested_training: Dict[str, Any]) -> str:
+    exercises = suggested_training['exercises']
+    full_exercise_types = {
+        'WU': '1️⃣️ WARM-UP',
+        'PS': '2️⃣ PRE-SET',
+        'MS': '3️⃣ MAIN SET',
+        'CD': '4️⃣ COOL-DOWN',
+    }
+    training_skeleton = {
+        'WU': [],
+        'PS': [],
+        'MS': [],
+        'CD': [],
+    }
+    training = 'План тренировки на сегодня:\n\n'
+    for exercise in exercises:
+        training_skeleton[exercise['type']].append(exercise)
+
+    type_number = 1
+    for (exercise_type, exercises) in training_skeleton.items():
+        if exercises:
+            number = 1
+            training += f'*{full_exercise_types[exercise_type]}*\n\n'
+            for ex in exercises:
+                exercise = ex['exercise']
+                training += f'''{type_number}.{number} _{exercise['name']}_  *{"" if ex['set'] == 0 else f"{ex['set']}x" }{ex['repeat']}*  `PZ{ex['power_zone']}`\n'''
+                number += 1
+            training += '\n'
+        type_number += 1
+    return training
+
+
 @suggest_training_poll_router.message(commands=["suggest_training"])
 @suggest_training_poll_router.message(F.text.casefold() == "suggest training")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
-    await state.update_data({})  # to ensure that we are starting from the beginning
+    from bot.routers.intro_poll_router import INTRO_POLL_NAME
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'https://474d-188-130-155-148.eu.ngrok.io/api/training_suggestor/poll_result/{INTRO_POLL_NAME}') as response:
+        async with session.get(f'http://innosport.batalov.me/api/training_suggestor/poll_result/{INTRO_POLL_NAME}') as response:
             status_code = response.status
-    if status_code != 200:
-        from bot.intro_poll_router import IntroPollStates
-        await state.set_state(IntroPollStates.age)
-        await message.answer(
-            "INTRO POLL STARTS",
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=[
-                    [
-                        KeyboardButton(text="ок"),
-                    ],
-                    [
-                        KeyboardButton(text="назад"),
-                    ],
-                ],
-                resize_keyboard=True,
-            ),
-        )
+    if False and status_code != 200:
+        from bot.routers.intro_poll_router import start_intro_poll
+        await start_intro_poll(message, state)  # Starting the intro poll
     else:
+        await state.update_data({})  # to ensure that we are starting from the beginning
         await state.set_state(SuggestTrainingPollStates.goal)
         await message.answer(
             "GOAL",
@@ -88,7 +105,7 @@ async def process_sport(message: Message, state: FSMContext) -> None:
     await state.update_data(sport=message.text)  # TODO: Parse for backend into enum
     await state.set_state(SuggestTrainingPollStates.training)
     await message.answer(
-        "TRAINING_TIME",
+        "TRAINING TIME",
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -112,12 +129,13 @@ async def process_training(message: Message, state: FSMContext) -> None:
     await state.update_data(working_load=INITIAL_WORKING_LOAD)
     data = await state.get_data()
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'https://474d-188-130-155-148.eu.ngrok.io/api/training_suggestor/suggest', params=data) as response:
+        async with session.get(f'http://innosport.batalov.me/api/training_suggestor/suggest', params=data) as response:
             json = await response.json()
             status_code = response.status
     if status_code == 200:
+        training = parse_suggested_training(json)
         await message.answer(
-            str(json),  # TODO: Parse into beautiful training
+            training,
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[
                     [
@@ -130,7 +148,11 @@ async def process_training(message: Message, state: FSMContext) -> None:
                 resize_keyboard=True,
             ),
         )
+    else:
+        pass  # TODO: Handle error
     await state.clear()
+    logger.info(
+        f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id}) sent /suggest_training command (auth status: {status_code}, json: {json})')
 
 
 @suggest_training_poll_router.message(F.text.casefold() == "объясни, что это значит")
@@ -151,11 +173,13 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
 @suggest_training_poll_router.message(F.text.casefold() == "ок, все понятно")
 @suggest_training_poll_router.message(F.text.casefold() == "ок, понял")
 async def process_training_understood(message: Message, state: FSMContext) -> None:
-    # await state.set_state(Menu.main)  # TODO: Add main menu state
     await message.answer(
-        "TRAINING UNDERSTOOD",
+        "TRAINING UNDERSTOOD",  # TODO: Change with actual info from BD
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
+                [
+                    KeyboardButton(text="тренировка прошла успешно!"),
+                ],
                 [
                     KeyboardButton(text="главное меню"),
                 ],

@@ -6,7 +6,7 @@ from loguru import logger
 
 
 def setup_logging(extra_handlers: Optional[list[LoguruHandler]] = None) -> None:
-    logging.getLogger().handlers = [InterceptHandler()]
+    # logging.getLogger().handlers = [InterceptHandler()]
 
     # Configure loguru
     if extra_handlers:
