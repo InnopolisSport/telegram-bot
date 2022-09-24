@@ -1,8 +1,8 @@
-import re
-from aiogram import F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from loguru import logger
+
+from bot.filters import text
 from bot.loader import dp, bot
 from bot import auth
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
@@ -20,33 +20,27 @@ async def get_auth_status(message: Message):
         async with session.get('http://innosport.batalov.me/api/profile/me') as response:
             json = await response.json()
             status_code = response.status
+    logger.info(f'User {message.from_user.id} status code: {status_code}')
     return status_code, json
-
-
-def escape_to_markdownv2(text: str):
-    #  To be escaped: '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
-    return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
-
-
-def escape_to_markdown(text: str):
-    #  To be escaped: ''_', '*', '`', '[', ']'
-    return re.sub(r'([_*\[\]`])', r'\\\1', text)
 
 
 @dp.message(Command(commands=['me']))
 async def get_me(message: Message):
     status_code, json = await get_auth_status(message)
-    if status_code == 403:
-        await message.answer(json['detail'])
-        logger.info(f'Replied message: {json}')
-    elif status_code == 200:
+    if status_code == 200:
         await message.answer(json['first_name'] + ' ' + json['last_name'] + '\n' + json['email'])
         logger.info(f'Replied message: {json}')
+    elif status_code == 403:
+        await message.answer(json['detail'])
+        logger.info(f'{status_code} Replied message: {json}')
+    else:
+        await message.answer('Something went wrong')
+        logger.warning(f'Something went wrong, replied message: {json}')
 
 
 # Main menu
 @dp.message(Command(commands=['start']))
-@dp.message(F.text.casefold() == "главное меню")
+@dp.message(text == "главное меню")
 async def command_start(message: Message, state: FSMContext):
     await state.clear()
     status_code, json = await get_auth_status(message)

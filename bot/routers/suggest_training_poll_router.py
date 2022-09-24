@@ -1,16 +1,20 @@
 from typing import Any, Dict
-
-from aiogram import F, Router
+from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
+
 from loguru import logger
 from bot import auth
+from bot.filters import text
+from bot.routers import POLL_NAMES
+from bot.utils import passed_intro_poll, fetch_poll_by_name
 
 INITIAL_WORKING_LOAD = 100_000
 
 suggest_training_poll_router = Router()
-SUGGEST_TRAINING_POLL_NAME = "suggest_training"
+SUGGEST_TRAINING_POLL_NAME = POLL_NAMES['suggest_training_poll']
+SUGGEST_TRAINING_POLL = dict()
 
 
 class SuggestTrainingPollStates(StatesGroup):
@@ -52,17 +56,14 @@ def parse_suggested_training(suggested_training: Dict[str, Any]) -> str:
 
 
 @suggest_training_poll_router.message(commands=["suggest_training"])
-@suggest_training_poll_router.message(F.text.casefold() == "suggest training")
+@suggest_training_poll_router.message(text == "suggest training")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
-    from bot.routers.intro_poll_router import INTRO_POLL_NAME
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'http://innosport.batalov.me/api/training_suggestor/poll_result/{INTRO_POLL_NAME}') as response:
-            status_code = response.status
-    if False and status_code != 200:
+    if not passed_intro_poll(message):
         from bot.routers.intro_poll_router import start_intro_poll
         await start_intro_poll(message, state)  # Starting the intro poll
     else:
-        await state.update_data({})  # to ensure that we are starting from the beginning
+        SUGGEST_TRAINING_POLL = await fetch_poll_by_name(message, SUGGEST_TRAINING_POLL_NAME)
+        await state.clear()  # to ensure that we are starting from the beginning
         await state.set_state(SuggestTrainingPollStates.goal)
         await message.answer(
             "GOAL",
@@ -155,7 +156,7 @@ async def process_training(message: Message, state: FSMContext) -> None:
         f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id}) sent /suggest_training command (auth status: {status_code}, json: {json})')
 
 
-@suggest_training_poll_router.message(F.text.casefold() == "объясни, что это значит")
+@suggest_training_poll_router.message(text == "объясни, что это значит")
 async def process_fitness_info(message: Message, state: FSMContext) -> None:
     await message.answer(
         "FITNESS INFO",
@@ -170,8 +171,8 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
     )
 
 
-@suggest_training_poll_router.message(F.text.casefold() == "ок, все понятно")
-@suggest_training_poll_router.message(F.text.casefold() == "ок, понял")
+@suggest_training_poll_router.message(text == "ок, все понятно")
+@suggest_training_poll_router.message(text == "ок, понял")
 async def process_training_understood(message: Message, state: FSMContext) -> None:
     await message.answer(
         "TRAINING UNDERSTOOD",  # TODO: Change with actual info from BD

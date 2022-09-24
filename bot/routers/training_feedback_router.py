@@ -1,13 +1,16 @@
-from aiogram import F, Router
+from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
+from loguru import logger
 from bot import auth
-from bot.filters import any_digits
+from bot.filters import any_digits, text
+from bot.routers import POLL_NAMES
+from bot.utils import fetch_poll_by_name
 
 training_feedback_poll_router = Router()
-TRAINING_FEEDBACK_POLL_NAME = "training_feedback"
+TRAINING_FEEDBACK_POLL_NAME = POLL_NAMES['training_feedback_poll']
 TRAINING_FEEDBACK_POLL = dict()
 
 
@@ -23,16 +26,11 @@ class TrainingFeedbackStates(StatesGroup):
 
 
 @training_feedback_poll_router.message(commands=["training_feedback"])
-@training_feedback_poll_router.message(F.text.casefold() == "training feedback")
-@training_feedback_poll_router.message(F.text.casefold() == "тренировка прошла успешно!")
+@training_feedback_poll_router.message(text == "training feedback")
+@training_feedback_poll_router.message(text == "тренировка прошла успешно!")
 async def command_training_feedback(message: Message, state: FSMContext) -> None:
-    await state.clear()
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(
-                f'http://innosport.batalov.me/api/training_suggestor/poll/{TRAINING_FEEDBACK_POLL_NAME}') as response:
-            status_code = response.status
-            json = await response.json()
-    # if status_code == 200:
+    TRAINING_FEEDBACK_POLL = await fetch_poll_by_name(message, TRAINING_FEEDBACK_POLL_NAME)
+    await state.clear()  # to ensure that we are starting from the beginning
     await state.set_state(TrainingFeedbackStates.five_point_scale)
     await message.answer('Оцените тренировку по шкале от 1 до 5')
     await message.answer(
@@ -106,7 +104,7 @@ async def process_breaks(message: Message, state: FSMContext) -> None:
 
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.failed_exercises,
-                                       F.text.casefold() == "нет, справился со всеми")
+                                       text == "нет, справился со всеми")
 async def process_failed_exercises(message: Message, state: FSMContext) -> None:
     await state.update_data(failed_exercises=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.doddle_exercises)
@@ -126,7 +124,7 @@ async def process_failed_exercises(message: Message, state: FSMContext) -> None:
 
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.failed_exercises,
-                                       F.text.casefold() != "нет, справился со всеми")
+                                       text != "нет, справился со всеми")
 async def process_failed_exercises(message: Message, state: FSMContext) -> None:
     await state.update_data(failed_exercises=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.fail_reason)
@@ -165,7 +163,7 @@ async def process_fail_reason(message: Message, state: FSMContext) -> None:
 
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.doddle_exercises,
-                                       F.text.casefold() == "нет, все были в меру тяжелыми")
+                                       text == "нет, все были в меру тяжелыми")
 async def process_fitness_info(message: Message, state: FSMContext) -> None:
     await state.update_data(doddle_exercises=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.finish)
@@ -183,7 +181,7 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
 
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.doddle_exercises,
-                                       F.text.casefold() != "нет, все были в меру тяжелыми")
+                                       text != "нет, все были в меру тяжелыми")
 async def process_fitness_info(message: Message, state: FSMContext) -> None:
     await state.update_data(doddle_exercises=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.doddle_reason)

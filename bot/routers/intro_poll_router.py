@@ -1,13 +1,16 @@
-from aiogram import F, Router
+from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
+from loguru import logger
 from bot import auth
-from bot.filters import any_digits
+from bot.filters import any_digits, text
+from bot.routers import POLL_NAMES
+from bot.utils import fetch_poll_by_name
 
 intro_poll_router = Router()
-INTRO_POLL_NAME = "intro"
+INTRO_POLL_NAME = POLL_NAMES['intro_poll']
 INTRO_POLL = dict()
 
 
@@ -26,23 +29,10 @@ class IntroPollStates(StatesGroup):
     finish = State()
 
 
-async def fetch_intro_poll(message: Message) -> None:
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'http://innosport.batalov.me/api/poll/{INTRO_POLL_NAME}') as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
-        INTRO_POLL = dict(json)
-
-
-def prepare_intro_poll_result(data: dict) -> dict:
-    pass
-
-
 @intro_poll_router.message(commands=["intro_poll"])
 async def start_intro_poll(message: Message, state: FSMContext) -> None:
-    await state.update_data({})  # to ensure that we are starting from the beginning
-    # await fetch_intro_poll(message)
+    INTRO_POLL = await fetch_poll_by_name(message, INTRO_POLL_NAME)
+    await state.clear()  # to ensure that we are starting from the beginning
     await state.set_state(IntroPollStates.age)
     await message.answer(
         'INTRO POLL STARTS',  # INTRO_POLL.get('first').get('text')
@@ -60,7 +50,7 @@ async def start_intro_poll(message: Message, state: FSMContext) -> None:
     )
 
 
-@intro_poll_router.message(IntroPollStates.age, F.text.casefold() == "ок")  # INTRO_POLL.get("first").get("answer")[0]
+@intro_poll_router.message(IntroPollStates.age, text == "ок")  # INTRO_POLL.get("first").get("answer")[0]
 async def process_age(message: Message, state: FSMContext) -> None:
     await state.set_state(IntroPollStates.sex)
     await message.answer(
