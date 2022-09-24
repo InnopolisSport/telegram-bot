@@ -1,4 +1,5 @@
 import re
+from typing import Tuple
 
 from aiogram.types import Message
 
@@ -23,6 +24,14 @@ async def fetch_poll_by_name(message: Message, poll_name: str) -> dict:
             status_code = response.status
     if status_code == 200:
         return dict(json)
+
+
+async def upload_poll_result_by_name(message: Message, result: dict,  poll_name: str) -> Tuple[int, dict]:
+    async with auth.SportTelegramSession(message.from_user) as session:
+        async with session.get(f'http://innosport.batalov.me/api/poll_result/{poll_name}', data=result) as response:
+            json = await response.json()
+            status_code = response.status
+    return status_code, json
 
 
 async def passed_intro_poll(message: Message) -> bool:

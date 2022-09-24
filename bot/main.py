@@ -51,7 +51,7 @@ async def command_start(message: Message, state: FSMContext):
         #     ''')
         # elif status_code == 200:
         await message.answer('''
-                Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
+                Hi there!\nI'm innosport+ bot!\nI can suggest you a training!
             ''',
                              reply_markup=ReplyKeyboardMarkup(
                                  keyboard=[

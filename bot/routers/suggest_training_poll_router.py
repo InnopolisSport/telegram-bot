@@ -58,11 +58,11 @@ def parse_suggested_training(suggested_training: Dict[str, Any]) -> str:
 @suggest_training_poll_router.message(commands=["suggest_training"])
 @suggest_training_poll_router.message(text == "suggest training")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
-    if not passed_intro_poll(message):
+    if not await passed_intro_poll(message):
         from bot.routers.intro_poll_router import start_intro_poll
         await start_intro_poll(message, state)  # Starting the intro poll
     else:
-        SUGGEST_TRAINING_POLL = await fetch_poll_by_name(message, SUGGEST_TRAINING_POLL_NAME)
+        # SUGGEST_TRAINING_POLL = await fetch_poll_by_name(message, SUGGEST_TRAINING_POLL_NAME)
         await state.clear()  # to ensure that we are starting from the beginning
         await state.set_state(SuggestTrainingPollStates.goal)
         await message.answer(

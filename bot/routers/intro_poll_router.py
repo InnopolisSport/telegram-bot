@@ -7,7 +7,7 @@ from loguru import logger
 from bot import auth
 from bot.filters import any_digits, text
 from bot.routers import POLL_NAMES
-from bot.utils import fetch_poll_by_name
+from bot.utils import fetch_poll_by_name, upload_poll_result_by_name
 
 intro_poll_router = Router()
 INTRO_POLL_NAME = POLL_NAMES['intro_poll']
@@ -31,7 +31,7 @@ class IntroPollStates(StatesGroup):
 
 @intro_poll_router.message(commands=["intro_poll"])
 async def start_intro_poll(message: Message, state: FSMContext) -> None:
-    INTRO_POLL = await fetch_poll_by_name(message, INTRO_POLL_NAME)
+    # INTRO_POLL = await fetch_poll_by_name(message, INTRO_POLL_NAME)
     await state.clear()  # to ensure that we are starting from the beginning
     await state.set_state(IntroPollStates.age)
     await message.answer(
@@ -265,20 +265,21 @@ async def process_pulse_rest(message: Message, state: FSMContext) -> None:
     )
 
 
+def prepare_result(data: dict) -> dict:
+    return {}
+
+
 @intro_poll_router.message(IntroPollStates.finish)
 async def process_finish(message: Message, state: FSMContext) -> None:
     await state.update_data(pulse_rest=message.text)
     data = await state.get_data()
-    res = prepare_intro_poll_result(data)
-    # async with auth.SportTelegramSession(message.from_user) as session:
-    #     async with session.post(f'http://innosport.batalov.me/api/training_suggestor/poll_result', data=res) as response:
-    #         status_code = response.status
-    #         json = await response.json()
-    # if status_code == 200:
-    await message.answer(
-        "INTRO POLL END",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    # Go to suggest training
-    from bot.routers.suggest_training_poll_router import command_suggest_training
-    await command_suggest_training(message, state)
+    result = prepare_result(data)
+    status_code, json = await upload_poll_result_by_name(message, result, INTRO_POLL_NAME)
+    if status_code == 200:
+        await message.answer(
+            "INTRO POLL END",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        # Go to suggest training
+        from bot.routers.suggest_training_poll_router import command_suggest_training
+        await command_suggest_training(message, state)

@@ -7,7 +7,7 @@ from loguru import logger
 from bot import auth
 from bot.filters import any_digits, text
 from bot.routers import POLL_NAMES
-from bot.utils import fetch_poll_by_name
+from bot.utils import fetch_poll_by_name, upload_poll_result_by_name
 
 training_feedback_poll_router = Router()
 TRAINING_FEEDBACK_POLL_NAME = POLL_NAMES['training_feedback_poll']
@@ -29,7 +29,7 @@ class TrainingFeedbackStates(StatesGroup):
 @training_feedback_poll_router.message(text == "training feedback")
 @training_feedback_poll_router.message(text == "тренировка прошла успешно!")
 async def command_training_feedback(message: Message, state: FSMContext) -> None:
-    TRAINING_FEEDBACK_POLL = await fetch_poll_by_name(message, TRAINING_FEEDBACK_POLL_NAME)
+    # TRAINING_FEEDBACK_POLL = await fetch_poll_by_name(message, TRAINING_FEEDBACK_POLL_NAME)
     await state.clear()  # to ensure that we are starting from the beginning
     await state.set_state(TrainingFeedbackStates.five_point_scale)
     await message.answer('Оцените тренировку по шкале от 1 до 5')
@@ -163,24 +163,6 @@ async def process_fail_reason(message: Message, state: FSMContext) -> None:
 
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.doddle_exercises,
-                                       text == "нет, все были в меру тяжелыми")
-async def process_fitness_info(message: Message, state: FSMContext) -> None:
-    await state.update_data(doddle_exercises=message.text)  # TODO: Parse for backend correctly
-    await state.set_state(TrainingFeedbackStates.finish)
-    await message.answer(
-        "Finish",
-        reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                [
-                    KeyboardButton(text="главное меню"),
-                ],
-            ],
-            resize_keyboard=True,
-        ),
-    )
-
-
-@training_feedback_poll_router.message(TrainingFeedbackStates.doddle_exercises,
                                        text != "нет, все были в меру тяжелыми")
 async def process_fitness_info(message: Message, state: FSMContext) -> None:
     await state.update_data(doddle_exercises=message.text)  # TODO: Parse for backend correctly
@@ -200,18 +182,38 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
     )
 
 
+def prepare_result(data: dict) -> dict:
+    return {}
+
+
+async def save_and_finish(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    result = prepare_result(data)
+    status_code, json = await upload_poll_result_by_name(message, result, TRAINING_FEEDBACK_POLL_NAME)
+    if status_code == 200:
+        await message.answer(
+            "Finish",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[
+                    [
+                        KeyboardButton(text="главное меню"),
+                    ],
+                ],
+                resize_keyboard=True,
+            ),
+        )
+
+
+@training_feedback_poll_router.message(TrainingFeedbackStates.doddle_exercises,
+                                       text == "нет, все были в меру тяжелыми")
+async def process_fitness_info(message: Message, state: FSMContext) -> None:
+    await state.update_data(doddle_exercises=message.text)  # TODO: Parse for backend correctly
+    await state.set_state(TrainingFeedbackStates.finish)
+    await save_and_finish(message, state)
+
+
 @training_feedback_poll_router.message(TrainingFeedbackStates.doddle_reason)
 async def process_fitness_info(message: Message, state: FSMContext) -> None:
     await state.update_data(doddle_reason=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.finish)
-    await message.answer(
-        "Finish",
-        reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                [
-                    KeyboardButton(text="главное меню"),
-                ],
-            ],
-            resize_keyboard=True,
-        ),
-    )
+    await save_and_finish(message, state)
