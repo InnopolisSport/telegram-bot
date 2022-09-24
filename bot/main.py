@@ -1,13 +1,11 @@
 import re
-
 from aiogram import F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from loguru import logger
 from bot.loader import dp, bot
 from bot import auth
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, \
-    InlineKeyboardButton
+from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
 
 
 def start_bot():
@@ -30,14 +28,19 @@ def escape_to_markdownv2(text: str):
     return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
 
 
+def escape_to_markdown(text: str):
+    #  To be escaped: ''_', '*', '`', '[', ']'
+    return re.sub(r'([_*\[\]`])', r'\\\1', text)
+
+
 @dp.message(Command(commands=['me']))
 async def get_me(message: Message):
     status_code, json = await get_auth_status(message)
     if status_code == 403:
-        await message.answer(escape_to_markdownv2(json['detail']))
+        await message.answer(json['detail'])
         logger.info(f'Replied message: {json}')
     elif status_code == 200:
-        await message.answer(escape_to_markdownv2(json['first_name'] + ' ' + json['last_name'] + '\n' + json['email']))
+        await message.answer(json['first_name'] + ' ' + json['last_name'] + '\n' + json['email'])
         logger.info(f'Replied message: {json}')
 
 
@@ -50,21 +53,17 @@ async def command_start(message: Message, state: FSMContext):
     if message:
         # if status_code == 403:
         #     await message.answer('''
-        #         Hi there\!\nYou are not authorized\. Please authorize at [sport\.innopolis\.university](https://sport.innopolis.university/)\.
+        #         Hi there!\nYou are not authorized\. Please authorize at [the website](http://innosport.batalov.me/).
         #     ''')
         # elif status_code == 200:
-        await message.answer(escape_to_markdownv2('''
+        await message.answer('''
                 Hi there!\nI'm innosport+ bot!\nI can suggest you a training for you!
-            '''),
+            ''',
                              reply_markup=ReplyKeyboardMarkup(
                                  keyboard=[
                                      [
                                          KeyboardButton(text="Suggest training"),
                                      ],
-                                     [
-                                         KeyboardButton(text="Show schedule"),
-                                         KeyboardButton(text="Check in for training"),
-                                     ]
                                  ],
                                  resize_keyboard=True,
                              ))
@@ -90,14 +89,15 @@ async def command_help(message: Message):
     status_code, _ = await get_auth_status(message)
     if status_code == 403:
         await message.answer('''
-            You are not authorized\. Please authorize at [sport\.innopolis\.university](https://sport.innopolis.university/)\.
+            You are not authorized. Please authorize at [the website](http://innosport.batalov.me/).
         ''')
     elif status_code == 200:
-        await message.answer(escape_to_markdownv2('''
+        await message.answer('''
         Use /suggest_training command to get a training!
-    '''))
+    ''')
     logger.info(
         f'{message.from_user.full_name} (@{message.from_user.username}) sent /help command (auth status: {status_code})')
+
 
 # @dp.message()
 # async def echo(message: Message):

@@ -8,6 +8,7 @@ from bot.filters import any_digits
 
 training_feedback_poll_router = Router()
 TRAINING_FEEDBACK_POLL_NAME = "training_feedback"
+TRAINING_FEEDBACK_POLL = dict()
 
 
 class TrainingFeedbackStates(StatesGroup):
