@@ -4,7 +4,6 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from loguru import logger
-from bot import auth
 from bot.filters import any_digits, text
 from bot.routers import POLL_NAMES
 from bot.utils import fetch_poll_by_name, upload_poll_result_by_name
@@ -27,14 +26,14 @@ class TrainingFeedbackStates(StatesGroup):
 
 @training_feedback_poll_router.message(commands=["training_feedback"])
 @training_feedback_poll_router.message(text == "training feedback")
-@training_feedback_poll_router.message(text == "тренировка прошла успешно!")
+@training_feedback_poll_router.message(text == "перейти к вопросам фидбека")
 async def command_training_feedback(message: Message, state: FSMContext) -> None:
     # TRAINING_FEEDBACK_POLL = await fetch_poll_by_name(message, TRAINING_FEEDBACK_POLL_NAME)
     await state.clear()  # to ensure that we are starting from the beginning
     await state.set_state(TrainingFeedbackStates.five_point_scale)
-    await message.answer('Оцените тренировку по шкале от 1 до 5')
+    await message.answer('Скажи, насколько тяжелой прошедшая тренировка показалась тебе в процессе по пятибальной шкале?')
     await message.answer(
-        '5point scale with info',
+        '5point scale with info',  # TODO: from db
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -49,12 +48,12 @@ async def command_training_feedback(message: Message, state: FSMContext) -> None
         ))
 
 
-@training_feedback_poll_router.message(TrainingFeedbackStates.five_point_scale, any_digits)  # TODO: add filter for 1-5 combined strings
+@training_feedback_poll_router.message(TrainingFeedbackStates.five_point_scale, any_digits)  # TODO: add filter for 1-5 combined strings, is it int?
 async def process_five_point_scale(message: Message, state: FSMContext) -> None:
     await state.update_data(five_point_scale=int(message.text))  # TODO: Parse correctly
     await state.set_state(TrainingFeedbackStates.breaks)
     await message.answer(
-        "Breaks",
+        "Breaks",  # TODO: from db
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -80,7 +79,7 @@ async def process_five_point_scale(message: Message, state: FSMContext) -> None:
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.five_point_scale)
 async def process_five_point_scale(message: Message, state: FSMContext) -> None:
-    await message.answer("Breaks again")
+    await message.answer("Breaks again")  # TODO: improvisation
 
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.breaks)
@@ -89,7 +88,7 @@ async def process_breaks(message: Message, state: FSMContext) -> None:
     await state.set_state(TrainingFeedbackStates.failed_exercises)
     # TODO: Get list of exercises with number as in suggested training
     await message.answer(
-        "Failed exercises",
+        "Failed exercises",  # TODO: from db
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -109,7 +108,7 @@ async def process_failed_exercises(message: Message, state: FSMContext) -> None:
     await state.update_data(failed_exercises=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.doddle_exercises)
     await message.answer(
-        "Doddle exercises",
+        "Doddle exercises",  # TODO: from db
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -129,7 +128,7 @@ async def process_failed_exercises(message: Message, state: FSMContext) -> None:
     await state.update_data(failed_exercises=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.fail_reason)
     await message.answer(
-        "fail reason",
+        "fail reason",  # TODO: from db
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -148,7 +147,7 @@ async def process_fail_reason(message: Message, state: FSMContext) -> None:
     await state.update_data(fail_reason=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.doddle_exercises)
     await message.answer(
-        "Doddle exercises",
+        "Doddle exercises",  # TODO: from db
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -168,7 +167,7 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
     await state.update_data(doddle_exercises=message.text)  # TODO: Parse for backend correctly
     await state.set_state(TrainingFeedbackStates.doddle_reason)
     await message.answer(
-        "doddle reason",
+        "doddle reason",  # TODO: from db
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -189,19 +188,20 @@ def prepare_result(data: dict) -> dict:
 async def save_and_finish(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     result = prepare_result(data)
-    status_code, json = await upload_poll_result_by_name(message, result, TRAINING_FEEDBACK_POLL_NAME)
-    if status_code == 200:
-        await message.answer(
-            "Finish",
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=[
-                    [
-                        KeyboardButton(text="главное меню"),
-                    ],
+    status_code, json = await upload_poll_result_by_name(message, result)
+    # if status_code == 200:
+    await message.answer('Ты молодец! Я обязательно учту это.')
+    await message.answer(
+        "Спасибо за обратную связь! Это поможет мне сделать твои тренировки лучше. Возвращайся, когда снова понадобится моя помощь!",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="главное меню"),
                 ],
-                resize_keyboard=True,
-            ),
-        )
+            ],
+            resize_keyboard=True,
+        ),
+    )
 
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.doddle_exercises,

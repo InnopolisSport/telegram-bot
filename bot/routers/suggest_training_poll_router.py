@@ -8,7 +8,7 @@ from loguru import logger
 from bot import auth
 from bot.filters import text
 from bot.routers import POLL_NAMES
-from bot.utils import passed_intro_poll, fetch_poll_by_name
+from bot.utils import passed_intro_poll, fetch_poll_by_name, API_URL, suggest_training
 
 INITIAL_WORKING_LOAD = 100_000
 
@@ -21,6 +21,8 @@ class SuggestTrainingPollStates(StatesGroup):
     goal = State()
     sport = State()
     training = State()  # includes training_time saving
+
+    finish = State()
 
 
 def parse_suggested_training(suggested_training: Dict[str, Any]) -> str:
@@ -52,13 +54,16 @@ def parse_suggested_training(suggested_training: Dict[str, Any]) -> str:
                 number += 1
             training += '\n'
         type_number += 1
+    training += '''\nНадеюсь, ты продуктивно проведешь время! Помни, что ты всегда можешь остановиться, если станет слишком тяжело. Не забывай пить достаточно воды во время и после тренировки и сохранять позитивный настрой! Ты делаешь это для себя🙂'''
     return training
 
 
 @suggest_training_poll_router.message(commands=["suggest_training"])
-@suggest_training_poll_router.message(text == "suggest training")
+@suggest_training_poll_router.message(text == "составить тренировку")
+@suggest_training_poll_router.message(SuggestTrainingPollStates.finish, text == "составить следующую тренировку")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
-    if not await passed_intro_poll(message):
+    if False and not await passed_intro_poll(message):
+    # if True or not await passed_intro_poll(message):
         from bot.routers.intro_poll_router import start_intro_poll
         await start_intro_poll(message, state)  # Starting the intro poll
     else:
@@ -128,38 +133,33 @@ async def process_sport(message: Message, state: FSMContext) -> None:
 async def process_training(message: Message, state: FSMContext) -> None:
     await state.update_data(time=int(message.text) * 60)  # TODO: Parse for backend correctly
     await state.update_data(working_load=INITIAL_WORKING_LOAD)
-    data = await state.get_data()
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'http://innosport.batalov.me/api/training_suggestor/suggest', params=data) as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
-        training = parse_suggested_training(json)
-        await message.answer(
-            training,
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=[
-                    [
-                        KeyboardButton(text="ок, все понятно"),
-                    ],
-                    [
-                        KeyboardButton(text="объясни, что это значит"),
-                    ],
+    params = await state.get_data()
+    json = await suggest_training(message, params)
+    await message.answer('''Прекрасно! Следующим сообщением я отправил тебе план упражнений на сегодня. Если ты не совсем понимаешь, что это значит, я могу рассказать тебе немного теории про фитнес и разъяснить, что к чему.''')
+    training = parse_suggested_training(json)
+    await message.answer(
+        training,
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="ок, все понятно"),
                 ],
-                resize_keyboard=True,
-            ),
-        )
-    else:
-        pass  # TODO: Handle error
+                [
+                    KeyboardButton(text="объясни, что это значит"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
     await state.clear()
     logger.info(
-        f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id}) sent /suggest_training command (auth status: {status_code}, json: {json})')
+        f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id}) sent /suggest_training command {json})')
 
 
 @suggest_training_poll_router.message(text == "объясни, что это значит")
 async def process_fitness_info(message: Message, state: FSMContext) -> None:
     await message.answer(
-        "FITNESS INFO",
+        '''Любая тренировка состоит из трех частей: разминка, основная часть и заключительное (или заминка, чтобы было проще запомнить).\nВо время разминки крайне важно “включить” все системы организма, разогреть их и подготовить к усердной работе на полную мощность. По времени она должна составлять примерно 20% от всей тренировки.\nОсновная часть тренировки также делится на две группы упражнений: PRE-SET, или подготовительная часть, нужна для того, чтобы вспомнить навыки и закрепить результаты, полученные на предыдущей тренировке; во время MAIN SET, или главной части, нужно выложиться на полную мощность и настроить себя на улучшение результатов. Основная часть должна составлять примерно 60% от всей тренировки.\nЗаключительная часть тренировки необходима для того, чтобы постепенно снизить нагрузку и вывести организм в состояние, близкое к тому, в котором он был перед началом занятий. Это крайне важно, поскольку резкие перепады нагрузок крайне опасны для организма. Заключительная часть также должна занимать около 20% тренировки.''',
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -174,14 +174,37 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
 @suggest_training_poll_router.message(text == "ок, все понятно")
 @suggest_training_poll_router.message(text == "ок, понял")
 async def process_training_understood(message: Message, state: FSMContext) -> None:
+    await state.set_state(SuggestTrainingPollStates.finish)
     await message.answer(
-        "TRAINING UNDERSTOOD",  # TODO: Change with actual info from BD
+        "Удачи! Возвращайся, когда снова понадобится моя помощь!",
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
                     KeyboardButton(text="тренировка прошла успешно!"),
                 ],
                 [
+                    KeyboardButton(text="главное меню"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@suggest_training_poll_router.message(SuggestTrainingPollStates.finish, text == "тренировка прошла успешно!")
+async def process_finish(message: Message, state: FSMContext) -> None:
+    await message.answer(
+        "Я очень рад! Чтобы я мог составить для тебя следующую тренировку, мне нужно узнать о твоем занятии подробнее. Можешь ответить на пару вопросов, чтобы мой план упражнений лучше тебе подходил?",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="перейти к вопросам фидбека"),
+                ],
+                [
+                    KeyboardButton(text="составить следующую тренировку"),
+                ],
+                [
+                    KeyboardButton(text="изменить данные анкеты"),
                     KeyboardButton(text="главное меню"),
                 ],
             ],
