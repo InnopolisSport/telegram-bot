@@ -43,9 +43,7 @@ async def get_me(message: Message):
         await message.answer(f"*{data['first_name']} {data['last_name']}*\n{data['email']}")
         logger.info(f'{get_user_string(message)} sent /me command ({data}) [authorized]')
     else:
-        await message.answer(
-            '''Привет!\nЧтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, 
-            зайди в профиль по ссылке: [innosport.batalov.me](http://innosport.batalov.me/).''')
+        await message.answer('''Привет!\nЧтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, зайди в профиль по ссылке: [innosport.batalov.me](http://innosport.batalov.me/).''')
         logger.warning(f'{get_user_string(message)} sent /me command [not authorized]')
 
 
@@ -56,9 +54,7 @@ async def command_start(message: Message, state: FSMContext):
     data = await get_auth_status(message)
     if message:
         if data:
-            await main_menu_keyboard(message, '''Привет!\nЯ бот _innosport+_, и моя задача — усовершенствовать твой 
-            подход к спорту. Я могу составить для тебя персональную тренировку, рассказать о доступных занятиях и 
-            секциях и сориентировать в твоем расписании! Какой план на сегодня:''')
+            await main_menu_keyboard(message, '''Привет!\nЯ бот _innosport+_, и моя задача — усовершенствовать твой подход к спорту. Я могу составить для тебя персональную тренировку, рассказать о доступных занятиях и секциях и сориентировать в твоем расписании! Какой план на сегодня:''')
             logger.info(f'{get_user_string(message)} sent /start command [main menu]')
     else:
         await main_menu_keyboard(message, '')

@@ -37,4 +37,7 @@ def get_question_answers(question: dict) -> list:
 
 
 def prepare_poll_result(data: dict, poll_name: str) -> dict:
-    return {'poll': poll_name, 'answers': [{q_id: answer} for q_id, answer in data.items() if q_id != 'q']}
+    return {
+        'poll': poll_name,
+        'answers': [{'question': q_id, 'answer': answer} for q_id, answer in data.items() if q_id != 'q']
+    }

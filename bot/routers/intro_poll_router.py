@@ -8,7 +8,7 @@ from bot.filters import any_digits, text
 from bot.routers import POLL_NAMES
 from bot.api import fetch_poll_by_name, upload_poll_result
 from bot.utils import prepare_poll_questions, get_cur_state_name, get_question_text_id, get_question_answers, \
-    prepare_poll_result
+    prepare_poll_result, get_user_string
 
 intro_poll_router = Router()
 INTRO_POLL_NAME = POLL_NAMES['intro_poll']
@@ -31,16 +31,19 @@ class IntroPollStates(StatesGroup):
 
 
 @intro_poll_router.message(commands=["intro_poll"])
-@intro_poll_router.message(text == 'изменить данные анкеты')
+@intro_poll_router.message(text == 'изменить данные анкеты')  # TODO: Add alternative text for editing intro poll
 async def start_intro_poll(message: Message, state: FSMContext) -> None:
+    # Get intro poll from db
     global INTRO_POLL
     INTRO_POLL = await fetch_poll_by_name(message, INTRO_POLL_NAME)
     INTRO_POLL = prepare_poll_questions(INTRO_POLL['questions'])
-
-    await state.clear()  # to ensure that we are starting from the beginning
+    # To ensure that we are starting from the beginning
+    await state.clear()
+    # Set state
     await state.set_state(IntroPollStates.age)
-
-    await message.answer(  # TODO: Add alternative text for editing intro poll
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
+    await message.answer(
         '''Чтобы я мог составить оптимальный план занятия, мне нужно узнать тебя лучше. Пожалуйста, пройти небольшую анкету, чтобы я составил твой профиль. Проходи честно (я никому не расскажу твои ответы, но смогу лучше понять твои цели от спорта😉).\nВопросов будет 13, но не беспокойся, каждый раз отвечать на все не придётся. Я запомню данные о тебе, а затем ты сможешь обновлять их по мере необходимости.''',
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
@@ -54,6 +57,7 @@ async def start_intro_poll(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} sent /intro_poll command [изменить данные анкеты]')
 
 
 @intro_poll_router.message(IntroPollStates.age, text == "ок")
@@ -63,9 +67,10 @@ async def process_age(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.sex)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
@@ -81,6 +86,7 @@ async def process_age(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [age]')
 
 
 @intro_poll_router.message(IntroPollStates.sex)
@@ -93,9 +99,10 @@ async def process_sex(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.height)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
@@ -111,6 +118,7 @@ async def process_sex(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [sex]')
 
 
 @intro_poll_router.message(IntroPollStates.height)
@@ -122,13 +130,15 @@ async def process_height(message: Message, state: FSMContext) -> None:
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.weight)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardRemove(),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [height]')
 
 
 @intro_poll_router.message(IntroPollStates.weight, any_digits)
@@ -140,21 +150,25 @@ async def process_weight(message: Message, state: FSMContext) -> None:
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.medical_group)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardRemove(),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [weight]')
 
 
 @intro_poll_router.message(IntroPollStates.weight)
 async def process_weight(message: Message, state: FSMContext) -> None:
+    # Send message
     await message.answer(
         "Пожалуйста, введи число (в сантиметрах)",
         reply_markup=ReplyKeyboardRemove(),
     )
+    logger.info(f'{get_user_string(message)} repeat question [height]')
 
 
 @intro_poll_router.message(IntroPollStates.medical_group, any_digits)
@@ -167,9 +181,10 @@ async def process_medical_group(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.sport_experience)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
@@ -186,14 +201,17 @@ async def process_medical_group(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [medical_group]')
 
 
 @intro_poll_router.message(IntroPollStates.medical_group)
 async def process_weight(message: Message, state: FSMContext) -> None:
+    # Send message
     await message.answer(
         "Пожалуйста, введи число (в килограммах)",
         reply_markup=ReplyKeyboardRemove(),
     )
+    logger.info(f'{get_user_string(message)} repeat question [weight]')
 
 
 @intro_poll_router.message(IntroPollStates.sport_experience)
@@ -206,9 +224,10 @@ async def process_sport_experience(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.sport_training_frequency)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
@@ -227,6 +246,7 @@ async def process_sport_experience(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [sport_experience]')
 
 
 @intro_poll_router.message(IntroPollStates.sport_training_frequency)
@@ -239,9 +259,10 @@ async def process_sport_training_frequency(message: Message, state: FSMContext) 
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.sport_training_time)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
@@ -255,6 +276,7 @@ async def process_sport_training_frequency(message: Message, state: FSMContext) 
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [sport_training_frequency]')
 
 
 @intro_poll_router.message(IntroPollStates.sport_training_time)
@@ -267,9 +289,10 @@ async def process_sport_training_time(message: Message, state: FSMContext) -> No
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.sport_desire_level)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
@@ -287,6 +310,7 @@ async def process_sport_training_time(message: Message, state: FSMContext) -> No
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [sport_training_time]')
 
 
 @intro_poll_router.message(IntroPollStates.sport_desire_level)
@@ -299,9 +323,10 @@ async def process_sport_desire_level(message: Message, state: FSMContext) -> Non
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.pulse_rest)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
@@ -322,6 +347,7 @@ async def process_sport_desire_level(message: Message, state: FSMContext) -> Non
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [sport_desire_level]')
 
 
 @intro_poll_router.message(IntroPollStates.pulse_rest)
@@ -334,9 +360,10 @@ async def process_pulse_rest(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-
+    # Set state
     await state.set_state(IntroPollStates.finish)
-
+    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
+    # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
@@ -358,6 +385,7 @@ async def process_pulse_rest(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
+    logger.info(f'{get_user_string(message)} got question {q_id} [pulse_rest]')
 
 
 @intro_poll_router.message(IntroPollStates.finish)
@@ -368,13 +396,23 @@ async def process_finish(message: Message, state: FSMContext) -> None:
     # Get result
     data = await state.get_data()
     result = prepare_poll_result(data, INTRO_POLL_NAME)
-
-    logger.info(f"Intro poll result: {result}")
-
+    logger.info(f'{get_user_string(message)} obtained intro poll result {result}')
+    # Send result
     if await upload_poll_result(message, result):
-        # Go to suggest training
+        # Go to suggest training poll
         from bot.routers.suggest_training_poll_router import command_suggest_training
         await command_suggest_training(message, state)
+        logger.info(f'{get_user_string(message)} successfully finished intro poll')
     else:
-        pass
-        # await message.answer("Что-то пошло не так. Попробуйте еще раз.") # TODO: maybe return to the beginning of the poll
+        await message.answer(
+            'Что-то пошло не так. Попробуй еще раз',
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[
+                    [
+                        KeyboardButton(text="главное меню"),
+                    ],
+                ],
+                resize_keyboard=True,
+            ),
+        )
+        logger.warning(f'{get_user_string(message)} failed to finish intro poll')

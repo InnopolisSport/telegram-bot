@@ -47,16 +47,16 @@ async def fetch_poll_by_name(message: Message, poll_name: str) -> dict:
         return {}
 
 
-async def upload_poll_result(message: Message, result: dict) -> bool:
+async def upload_poll_result(message: Message, data: dict) -> bool:
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/training_suggestor/poll_result', data=result) as response:
+        async with session.post(f'{API_URL}/training_suggestor/poll_result', data=data) as response:
             json = await response.json()
             status_code = response.status
     if status_code == 200:
-        logger.info(f'{get_user_string(message)} successfully upload poll result {result} ({status_code} {json})')
+        logger.info(f'{get_user_string(message)} successfully upload poll result {data} ({status_code} {json})')
         return True
     else:
-        logger.error(f'{get_user_string(message)} failed to upload poll result {result} ({status_code} {json})')
+        logger.error(f'{get_user_string(message)} failed to upload poll result {data} ({status_code} {json})')
         return False
 
 
