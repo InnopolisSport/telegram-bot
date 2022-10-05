@@ -1,12 +1,12 @@
 from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
 
 from loguru import logger
 from bot.filters import any_digits, text
 from bot.routers import POLL_NAMES
-from bot.utils import fetch_poll_by_name, upload_poll_result_by_name
+from bot.api import fetch_poll_by_name, upload_poll_result
 
 training_feedback_poll_router = Router()
 TRAINING_FEEDBACK_POLL_NAME = POLL_NAMES['training_feedback_poll']
@@ -188,7 +188,7 @@ def prepare_result(data: dict) -> dict:
 async def save_and_finish(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     result = prepare_result(data)
-    status_code, json = await upload_poll_result_by_name(message, result)
+    status_code, json = await upload_poll_result(message, result)
     # if status_code == 200:
     await message.answer('Ты молодец! Я обязательно учту это.')
     await message.answer(

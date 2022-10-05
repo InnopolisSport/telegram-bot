@@ -5,10 +5,9 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
 
 from loguru import logger
-from bot import auth
 from bot.filters import text
 from bot.routers import POLL_NAMES
-from bot.utils import passed_intro_poll, fetch_poll_by_name, API_URL, suggest_training
+from bot.api import passed_intro_poll, fetch_poll_by_name, API_URL, suggest_training
 
 INITIAL_WORKING_LOAD = 100_000
 
@@ -62,8 +61,10 @@ def parse_suggested_training(suggested_training: Dict[str, Any]) -> str:
 @suggest_training_poll_router.message(text == "составить тренировку")
 @suggest_training_poll_router.message(SuggestTrainingPollStates.finish, text == "составить следующую тренировку")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
-    if False and not await passed_intro_poll(message):
-    # if True or not await passed_intro_poll(message):
+    passed = await passed_intro_poll(message)
+    if passed is None:
+        return
+    if not passed:
         from bot.routers.intro_poll_router import start_intro_poll
         await start_intro_poll(message, state)  # Starting the intro poll
     else:
@@ -151,6 +152,7 @@ async def process_training(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
+    # К сожалению, тренировку сгенерировать не удалось. Подойди к тренеру и попроси его помочь. TODO: if for suggest_training
     await state.clear()
     logger.info(
         f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id}) sent /suggest_training command {json})')

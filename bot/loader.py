@@ -1,5 +1,6 @@
 from aiogram import Bot, Dispatcher
 
+from bot.routers.fallback_router import fallback_router
 from bot.routers.intro_poll_router import intro_poll_router
 from bot.routers.suggest_training_poll_router import suggest_training_poll_router
 from bot.routers.training_feedback_router import training_feedback_poll_router
@@ -26,3 +27,4 @@ dp.shutdown.register(on_shutdown_event)
 dp.include_router(intro_poll_router)
 dp.include_router(suggest_training_poll_router)
 dp.include_router(training_feedback_poll_router)
+dp.include_router(fallback_router)

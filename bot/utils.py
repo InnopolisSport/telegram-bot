@@ -1,13 +1,11 @@
 import re
-from typing import Tuple
 
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from loguru import logger
-from bot import auth
-from bot.routers import POLL_NAMES
 
-API_URL = 'http://innosport.batalov.me/api'
+def get_user_string(message: Message):
+    return f'{message.from_user.full_name} (@{message.from_user.username}:{message.from_user.id})'
 
 
 def escape_to_markdownv2(text: str):
@@ -20,46 +18,23 @@ def escape_to_markdown(text: str):
     return re.sub(r'([_*\[\]`])', r'\\\1', text)
 
 
-async def get_auth_status(message: Message):
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/profile/me') as response:
-            json = await response.json()
-            status_code = response.status
-    logger.info(f'User {message.from_user.id} status code: {status_code}')  # TODO: revise
-    return status_code, json
+async def get_cur_state_name(state: FSMContext) -> str:
+    return (await state.get_state()).split(':')[-1]
 
 
-async def suggest_training(message: Message, params: dict) -> dict:
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/training_suggestor/suggest', params=params) as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
-        return dict(json)
-    else:
-        # К сожалению, тренировку сгенерировать не удалось. Подойди к тренеру и попроси его помочь.
-        pass  # TODO: Handle error here or handle it in the caller?
+# Working with polls
+
+def prepare_poll_questions(poll: list) -> dict:
+    return {question['state']: question for question in poll}
 
 
-async def fetch_poll_by_name(message: Message, poll_name: str) -> dict:
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/training_suggestor/poll/{poll_name}') as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
-        return dict(json)
+def get_question_text_id(question: dict) -> tuple[str, str]:
+    return question['question'], question['id']
 
 
-async def upload_poll_result_by_name(message: Message, result: dict) -> Tuple[int, dict]:
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/training_suggestor/poll_result', data=result) as response:
-            json = await response.json()
-            status_code = response.status
-    return status_code, json
+def get_question_answers(question: dict) -> list:
+    return [ans['answer'] for ans in question['answers']]
 
 
-async def passed_intro_poll(message: Message) -> bool:
-    async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/training_suggestor/poll_result/{POLL_NAMES["intro_poll"]}') as response:
-            status_code = response.status
-    return status_code == 200
+def prepare_poll_result(data: dict, poll_name: str) -> dict:
+    return {'poll': poll_name, 'answers': [{q_id: answer} for q_id, answer in data.items() if q_id != 'q']}
