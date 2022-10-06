@@ -39,9 +39,6 @@ async def start_intro_poll(message: Message, state: FSMContext) -> None:
     INTRO_POLL = prepare_poll_questions(INTRO_POLL['questions'])
     # To ensure that we are starting from the beginning
     await state.clear()
-    # Set state
-    await state.set_state(IntroPollStates.age)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         '''Чтобы я мог составить оптимальный план занятия, мне нужно узнать тебя лучше. Пожалуйста, пройти небольшую анкету, чтобы я составил твой профиль. Проходи честно (я никому не расскажу твои ответы, но смогу лучше понять твои цели от спорта😉).\nВопросов будет 13, но не беспокойся, каждый раз отвечать на все не придётся. Я запомню данные о тебе, а затем ты сможешь обновлять их по мере необходимости.''',
@@ -58,6 +55,9 @@ async def start_intro_poll(message: Message, state: FSMContext) -> None:
         ),
     )
     logger.info(f'{get_user_string(message)} sent /intro_poll command [изменить данные анкеты]')
+    # Set state
+    await state.set_state(IntroPollStates.age)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.age, text == "ок")
@@ -67,9 +67,6 @@ async def process_age(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.sex)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -87,6 +84,9 @@ async def process_age(message: Message, state: FSMContext) -> None:
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [age]')
+    # Set state
+    await state.set_state(IntroPollStates.sex)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.sex)
@@ -99,9 +99,6 @@ async def process_sex(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.height)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -119,6 +116,9 @@ async def process_sex(message: Message, state: FSMContext) -> None:
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [sex]')
+    # Set state
+    await state.set_state(IntroPollStates.height)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.height)
@@ -130,15 +130,15 @@ async def process_height(message: Message, state: FSMContext) -> None:
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.weight)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardRemove(),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [height]')
+    # Set state
+    await state.set_state(IntroPollStates.weight)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.weight, any_digits)
@@ -150,15 +150,15 @@ async def process_weight(message: Message, state: FSMContext) -> None:
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.medical_group)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
         reply_markup=ReplyKeyboardRemove(),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [weight]')
+    # Set state
+    await state.set_state(IntroPollStates.medical_group)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.weight)
@@ -181,9 +181,6 @@ async def process_medical_group(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.sport_experience)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -202,6 +199,9 @@ async def process_medical_group(message: Message, state: FSMContext) -> None:
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [medical_group]')
+    # Set state
+    await state.set_state(IntroPollStates.sport_experience)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.medical_group)
@@ -224,9 +224,6 @@ async def process_sport_experience(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.sport_training_frequency)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -247,6 +244,9 @@ async def process_sport_experience(message: Message, state: FSMContext) -> None:
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [sport_experience]')
+    # Set state
+    await state.set_state(IntroPollStates.sport_training_frequency)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.sport_training_frequency)
@@ -259,9 +259,6 @@ async def process_sport_training_frequency(message: Message, state: FSMContext) 
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.sport_training_time)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -277,6 +274,9 @@ async def process_sport_training_frequency(message: Message, state: FSMContext) 
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [sport_training_frequency]')
+    # Set state
+    await state.set_state(IntroPollStates.sport_training_time)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.sport_training_time)
@@ -289,9 +289,6 @@ async def process_sport_training_time(message: Message, state: FSMContext) -> No
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.sport_desire_level)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -311,6 +308,9 @@ async def process_sport_training_time(message: Message, state: FSMContext) -> No
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [sport_training_time]')
+    # Set state
+    await state.set_state(IntroPollStates.sport_desire_level)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.sport_desire_level)
@@ -323,9 +323,6 @@ async def process_sport_desire_level(message: Message, state: FSMContext) -> Non
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.pulse_rest)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -348,6 +345,9 @@ async def process_sport_desire_level(message: Message, state: FSMContext) -> Non
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [sport_desire_level]')
+    # Set state
+    await state.set_state(IntroPollStates.pulse_rest)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.pulse_rest)
@@ -360,9 +360,6 @@ async def process_pulse_rest(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
     answers = get_question_answers(INTRO_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(IntroPollStates.finish)
-    logger.info(f'{get_user_string(message)} set state to {get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -386,6 +383,9 @@ async def process_pulse_rest(message: Message, state: FSMContext) -> None:
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [pulse_rest]')
+    # Set state
+    await state.set_state(IntroPollStates.finish)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @intro_poll_router.message(IntroPollStates.finish)
