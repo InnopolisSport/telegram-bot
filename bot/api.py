@@ -49,7 +49,7 @@ async def fetch_poll_by_name(message: Message, poll_name: str) -> dict:
 
 async def upload_poll_result(message: Message, data: dict) -> bool:
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.post(f'{API_URL}/training_suggestor/poll_result', data=data) as response:
+        async with session.post(f'{API_URL}/training_suggestor/poll_result', json=data) as response:
             json = await response.json()
             status_code = response.status
     if status_code == 200:

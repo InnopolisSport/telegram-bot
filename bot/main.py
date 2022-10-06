@@ -63,6 +63,7 @@ async def command_start(message: Message, state: FSMContext):
 
 # Alternative main menu
 @dp.message(IntroPollStates.age, text == 'назад')
+@dp.message(IntroPollStates.finish, text == 'главное меню')
 @dp.message(TrainingFeedbackStates.finish, text == 'главное меню')
 @dp.message(SuggestTrainingPollStates.finish, text == 'главное меню')
 async def alternative_main_menu(message: Message, state: FSMContext) -> None:
