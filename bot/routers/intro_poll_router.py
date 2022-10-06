@@ -162,7 +162,7 @@ async def process_weight(message: Message, state: FSMContext) -> None:
 
 
 @intro_poll_router.message(IntroPollStates.weight)
-async def process_weight(message: Message, state: FSMContext) -> None:
+async def process_height(message: Message, state: FSMContext) -> None:
     # Send message
     await message.answer(
         "Пожалуйста, введи число (в сантиметрах)",
