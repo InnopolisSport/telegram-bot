@@ -27,4 +27,4 @@ dp.shutdown.register(on_shutdown_event)
 dp.include_router(intro_poll_router)
 dp.include_router(suggest_training_poll_router)
 dp.include_router(training_feedback_poll_router)
-dp.include_router(fallback_router)
+dp.include_router(fallback_router)  # must be included last

@@ -397,7 +397,7 @@ async def process_finish(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     result = prepare_poll_result(data, INTRO_POLL_NAME)
     logger.info(f'{get_user_string(message)} obtained intro poll result {result}')
-    # Send result
+    # Send poll result
     if await upload_poll_result(message, result):
         # Go to suggest training poll
         from bot.routers.suggest_training_poll_router import command_suggest_training
