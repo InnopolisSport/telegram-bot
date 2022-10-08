@@ -1,6 +1,6 @@
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
+from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from loguru import logger
 from bot.filters import text
@@ -57,7 +57,7 @@ async def command_start(message: Message, state: FSMContext):
             await main_menu_keyboard(message, '''Привет!\nЯ бот _innosport+_, и моя задача — усовершенствовать твой подход к спорту. Я могу составить для тебя персональную тренировку, рассказать о доступных занятиях и секциях и сориентировать в твоем расписании! Какой план на сегодня:''')
             logger.info(f'{get_user_string(message)} sent /start command [main menu, authorized]')
         else:
-            await message.answer('''Привет!\nЧтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, зайди в профиль по ссылке: [innosport.batalov.me](http://innosport.batalov.me/).''')
+            await message.answer('''Привет!\nЧтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, зайди в профиль по ссылке: [innosport.batalov.me](http://innosport.batalov.me/).''', reply_markup=ReplyKeyboardRemove())
             logger.warning(f'{get_user_string(message)} sent /start command [main menu, not authorized]')
     else:
         await main_menu_keyboard(message, '')
