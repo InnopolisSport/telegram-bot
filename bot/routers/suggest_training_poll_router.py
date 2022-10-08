@@ -93,6 +93,9 @@ async def command_suggest_training(message: Message, state: FSMContext) -> None:
         question, q_id = get_question_text_id(SUGGEST_TRAINING_POLL[cur_state])
         answers = get_question_answers(SUGGEST_TRAINING_POLL[cur_state])
         await state.update_data(q=q_id)
+        # Set state
+        await state.set_state(SuggestTrainingPollStates.goal)
+        logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
         # Send message
         await message.answer(
             question,
@@ -112,9 +115,6 @@ async def command_suggest_training(message: Message, state: FSMContext) -> None:
             ),
         )
         logger.info(f'{get_user_string(message)} sent /suggest_training command [составить тренировку, составить следующую тренировку] and got question {q_id} [goal]')
-        # Set state
-        await state.set_state(SuggestTrainingPollStates.goal)
-        logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @suggest_training_poll_router.message(SuggestTrainingPollStates.goal)
@@ -127,6 +127,9 @@ async def process_goal(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(SUGGEST_TRAINING_POLL[cur_state])
     answers = get_question_answers(SUGGEST_TRAINING_POLL[cur_state])
     await state.update_data(q=q_id)
+    # Set state
+    await state.set_state(SuggestTrainingPollStates.sport)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -136,9 +139,6 @@ async def process_goal(message: Message, state: FSMContext) -> None:
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [sport]')
-    # Set state
-    await state.set_state(SuggestTrainingPollStates.sport)
-    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @suggest_training_poll_router.message(SuggestTrainingPollStates.sport)
@@ -151,6 +151,9 @@ async def process_sport(message: Message, state: FSMContext) -> None:
     question, q_id = get_question_text_id(SUGGEST_TRAINING_POLL[cur_state])
     answers = get_question_answers(SUGGEST_TRAINING_POLL[cur_state])
     await state.update_data(q=q_id)
+    # Set state
+    await state.set_state(SuggestTrainingPollStates.training)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -170,9 +173,6 @@ async def process_sport(message: Message, state: FSMContext) -> None:
         ),
     )
     logger.info(f'{get_user_string(message)} got question {q_id} [training time]')
-    # Set state
-    await state.set_state(SuggestTrainingPollStates.training)
-    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
 @suggest_training_poll_router.message(SuggestTrainingPollStates.training)
