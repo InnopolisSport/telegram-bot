@@ -1,7 +1,21 @@
 import re
+from enum import Enum
 
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
+
+
+class ErrorMessages(Enum):
+    REQUEST_FAILED = "У каждого бота бывают сбои, извини. Скоро всё исправят, и ты сможешь повторить запрос"
+    SUGGEST_TRAINING = "К сожалению, Что-то пошло не так и тренировку сгенерировать не удалось. Подойди к тренеру и попроси его помочь или попробуй снова"
+    UNKNOWN_COMMAND = "У каждого бота бывают сбои. Извини, я не понял тебя"
+    REPEAT_INPUT = "Кажется, ты ввёл неправильные данные. Попробуй снова"
+
+
+INITIAL_INFLUENCE_RATIOS = {
+    't': 1,
+    'wl': 1,
+}
 
 
 def get_user_string(message: Message):
@@ -40,4 +54,20 @@ def prepare_poll_result(data: dict, poll_name: str) -> dict:
     return {
         'poll': poll_name,
         'answers': [{'question': q_id, 'answer': answer} for q_id, answer in data.items() if q_id != 'q']
+    }
+
+
+def get_influence_ratios(question: dict, answer: str) -> dict:
+    for ans in question['answers']:
+        if ans['answer'] == answer:
+            return {
+                't': 1 + ans['time_ratio_influence'],
+                'wl': 1 + ans['working_load_ratio_influence'],
+            }
+
+
+def accumulate_influence_ratios(prev_ratios: dict, ratios: dict) -> dict:
+    return {
+        't': prev_ratios['t'] * ratios['t'],
+        'wl': prev_ratios['wl'] * ratios['wl'],
     }

@@ -1,4 +1,5 @@
 from aiogram import Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
@@ -8,7 +9,7 @@ from bot.filters import text
 from bot.routers import POLL_NAMES
 from bot.api import fetch_poll_by_name, upload_poll_result
 from bot.utils import prepare_poll_questions, get_cur_state_name, get_question_text_id, get_question_answers, \
-    get_user_string, prepare_poll_result
+    get_user_string, prepare_poll_result, ErrorMessages
 
 training_feedback_poll_router = Router()
 TRAINING_FEEDBACK_POLL_NAME = POLL_NAMES['training_feedback_poll']
@@ -26,7 +27,7 @@ class TrainingFeedbackStates(StatesGroup):
     finish = State()
 
 
-@training_feedback_poll_router.message(commands=["training_feedback"])
+@training_feedback_poll_router.message(Command(commands=["training_feedback"]))
 @training_feedback_poll_router.message(text == "training feedback")
 @training_feedback_poll_router.message(text == "перейти к вопросам фидбека")
 async def command_training_feedback(message: Message, state: FSMContext) -> None:
@@ -36,24 +37,20 @@ async def command_training_feedback(message: Message, state: FSMContext) -> None
     TRAINING_FEEDBACK_POLL = prepare_poll_questions(TRAINING_FEEDBACK_POLL['questions'])
     # To ensure that we are starting from the beginning
     await state.clear()
+    # Set state
+    await state.set_state(TrainingFeedbackStates.five_point_scale)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Get next question
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(TRAINING_FEEDBACK_POLL[cur_state])
     answers = get_question_answers(TRAINING_FEEDBACK_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(TrainingFeedbackStates.five_point_scale)
-    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Send messages
     await message.answer('Скажи, насколько тяжелой прошедшая тренировка показалась тебе в процессе по пятибальной шкале?')
     await message.answer(
         question,
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                [
-                    KeyboardButton(text=answer) for answer in answers
-                ]
-            ],
+            keyboard=[[KeyboardButton(text=answer)] for answer in answers],
             resize_keyboard=True,
         ))
     logger.info(f'{get_user_string(message)} sent question {q_id} [five_point_scale]')
@@ -62,16 +59,16 @@ async def command_training_feedback(message: Message, state: FSMContext) -> None
 @training_feedback_poll_router.message(TrainingFeedbackStates.five_point_scale)
 async def process_five_point_scale(message: Message, state: FSMContext) -> None:
     # Save answer
-    q, a = (await state.get_data())['q'], int(message.text)
+    q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
+    # Set state
+    await state.set_state(TrainingFeedbackStates.breaks)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Get next question
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(TRAINING_FEEDBACK_POLL[cur_state])
     answers = get_question_answers(TRAINING_FEEDBACK_POLL[cur_state])
     await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(TrainingFeedbackStates.breaks)
-    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Send message
     await message.answer(
         question,
@@ -217,7 +214,7 @@ async def save_and_finish(message: Message, state: FSMContext) -> None:
     else:
         # Send message
         await message.answer(
-            'Что-то пошло не так. Попробуй еще раз.',
+            ErrorMessages.REQUEST_FAILED.value,
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[
                     [

@@ -1,4 +1,5 @@
 from aiogram import Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -8,7 +9,7 @@ from bot.filters import any_digits, text
 from bot.routers import POLL_NAMES
 from bot.api import fetch_poll_by_name, upload_poll_result
 from bot.utils import prepare_poll_questions, get_cur_state_name, get_question_text_id, get_question_answers, \
-    prepare_poll_result, get_user_string
+    prepare_poll_result, get_user_string, ErrorMessages
 
 intro_poll_router = Router()
 INTRO_POLL_NAME = POLL_NAMES['intro_poll']
@@ -30,7 +31,7 @@ class IntroPollStates(StatesGroup):
     finish = State()
 
 
-@intro_poll_router.message(commands=["intro_poll"])
+@intro_poll_router.message(Command(commands=["intro_poll"]))
 @intro_poll_router.message(text == 'изменить данные анкеты')  # TODO: Add alternative text for editing intro poll
 async def start_intro_poll(message: Message, state: FSMContext) -> None:
     # Get intro poll from db
@@ -165,7 +166,7 @@ async def process_weight(message: Message, state: FSMContext) -> None:
 async def process_height(message: Message, state: FSMContext) -> None:
     # Send message
     await message.answer(
-        "Пожалуйста, введи число (в сантиметрах)",
+        ErrorMessages.REPEAT_INPUT.value,
         reply_markup=ReplyKeyboardRemove(),
     )
     logger.info(f'{get_user_string(message)} repeat question [height]')
@@ -208,7 +209,7 @@ async def process_medical_group(message: Message, state: FSMContext) -> None:
 async def process_weight(message: Message, state: FSMContext) -> None:
     # Send message
     await message.answer(
-        "Пожалуйста, введи число (в килограммах)",
+        ErrorMessages.REPEAT_INPUT.value,
         reply_markup=ReplyKeyboardRemove(),
     )
     logger.info(f'{get_user_string(message)} repeat question [weight]')
@@ -405,7 +406,7 @@ async def process_finish(message: Message, state: FSMContext) -> None:
         logger.info(f'{get_user_string(message)} successfully finished intro poll')
     else:
         await message.answer(
-            'Что-то пошло не так. Попробуй еще раз',
+            ErrorMessages.REQUEST_FAILED.value,
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[
                     [

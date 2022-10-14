@@ -29,7 +29,7 @@ async def main_menu_keyboard(message: Message, msg_text: str) -> None:
              ],
              [
                  KeyboardButton(text="показать расписание"),  # TODO: logic
-                 KeyboardButton(text="записаться на занятия"),  # TODO: logic
+                 # KeyboardButton(text="записаться на занятия"),  # TODO: logic
              ],
          ],
          resize_keyboard=True,

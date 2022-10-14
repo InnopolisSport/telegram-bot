@@ -1,4 +1,5 @@
 from aiogram import Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
@@ -8,24 +9,28 @@ from bot.filters import text
 from bot.routers import POLL_NAMES
 from bot.api import passed_intro_poll, fetch_poll_by_name, suggest_training, upload_poll_result
 from bot.utils import get_user_string, prepare_poll_questions, get_cur_state_name, get_question_text_id, \
-    get_question_answers, prepare_poll_result
+    get_question_answers, prepare_poll_result, ErrorMessages, INITIAL_INFLUENCE_RATIOS, get_influence_ratios, \
+    accumulate_influence_ratios
 
 INITIAL_WORKING_LOAD = 100_000  # TODO move to db
 
 suggest_training_poll_router = Router()
 SUGGEST_TRAINING_POLL_NAME = POLL_NAMES['suggest_training_poll']
 SUGGEST_TRAINING_POLL = dict()
+INFLUENCE = INITIAL_INFLUENCE_RATIOS
 
 
 class SuggestTrainingPollStates(StatesGroup):
     goal = State()
     sport = State()
-    training = State()  # includes training_time saving
+    time = State()
+    training = State()
 
     finish = State()
 
 
-def parse_suggested_training(suggested_training: dict) -> str:  # TODO: add training time, sport, goal
+def parse_suggested_training(suggested_training: dict, info: dict) -> str:  # TODO: add training time, sport, goal
+    print(info)
     exercises = suggested_training['exercises']
     full_exercise_types = {
         'WU': '1️⃣️ WARM-UP',    # 1
@@ -40,6 +45,7 @@ def parse_suggested_training(suggested_training: dict) -> str:  # TODO: add trai
         'CD': [],
     }
     training = 'План тренировки на сегодня:\n\n'
+    training += f"*{info['sport']}*, _{int(info['time'] / 60)} минут_\n*Цель*: {info['goal']}\n\n"
     for exercise in exercises:
         training_skeleton[exercise['type']].append(exercise)
 
@@ -50,12 +56,10 @@ def parse_suggested_training(suggested_training: dict) -> str:  # TODO: add trai
             training += f'*{full_exercise_types[exercise_type]}*\n\n'
             for ex in exercises:
                 exercise = ex['exercise']
-                training += f'''{type_number}.{number} _{exercise['name']}_  *{"" if ex['set'] == 0 else f"{ex['set']}x" }{ex['repeat']}*  `PZ{ex['power_zone']}`\n'''
+                training += f'''{type_number}.{number} _{exercise['name']}_  *{"" if ex['set'] == 0 else "" if ex['set'] == 1 else f"{ex['set']}x"}{ex['repeat']}*  `PZ{ex['power_zone']}`\n'''
                 number += 1
             training += '\n'
         type_number += 1
-
-    training += '''\nНадеюсь, ты продуктивно проведешь время! Помни, что ты всегда можешь остановиться, если станет слишком тяжело. Не забывай пить достаточно воды во время и после тренировки и сохранять позитивный настрой! Ты делаешь это для себя🙂'''
 
     return training
 
@@ -64,17 +68,19 @@ def prepare_params_suggest(results: dict) -> dict:
     return {
         'time': results['time'],
         'working_load': results['working_load'],
+        'influence_t': results['influence']['t'],
+        'influence_wl': results['influence']['wl'],
     }
 
 
-@suggest_training_poll_router.message(commands=["suggest_training"])
+@suggest_training_poll_router.message(Command(commands=["suggest_training"]))
 @suggest_training_poll_router.message(text == "составить тренировку")
 @suggest_training_poll_router.message(SuggestTrainingPollStates.finish, text == "составить следующую тренировку")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
     # Check for intro poll passing
     passed = await passed_intro_poll(message)
     if passed is None:
-        await message.answer('Что-то пошло не так. Попробуй еще раз')
+        await message.answer(ErrorMessages.REQUEST_FAILED.value)
         logger.warning(f'{get_user_string(message)} failed to start suggest training poll')
         return
     if not passed:
@@ -88,14 +94,14 @@ async def command_suggest_training(message: Message, state: FSMContext) -> None:
         SUGGEST_TRAINING_POLL = prepare_poll_questions(SUGGEST_TRAINING_POLL['questions'])
         # To ensure that we are starting from the beginning
         await state.clear()
+        # Set state
+        await state.set_state(SuggestTrainingPollStates.goal)
+        logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
         # Get next question
         cur_state = await get_cur_state_name(state)
         question, q_id = get_question_text_id(SUGGEST_TRAINING_POLL[cur_state])
         answers = get_question_answers(SUGGEST_TRAINING_POLL[cur_state])
-        await state.update_data(q=q_id)
-        # Set state
-        await state.set_state(SuggestTrainingPollStates.goal)
-        logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
+        await state.update_data(q=cur_state)
         # Send message
         await message.answer(
             question,
@@ -122,14 +128,17 @@ async def process_goal(message: Message, state: FSMContext) -> None:
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
+    current_influence = get_influence_ratios(SUGGEST_TRAINING_POLL[await get_cur_state_name(state)], message.text)
+    global INFLUENCE
+    INFLUENCE = accumulate_influence_ratios(INFLUENCE, current_influence)
+    # Set state
+    await state.set_state(SuggestTrainingPollStates.sport)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Get next question
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(SUGGEST_TRAINING_POLL[cur_state])
     answers = get_question_answers(SUGGEST_TRAINING_POLL[cur_state])
-    await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(SuggestTrainingPollStates.sport)
-    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
+    await state.update_data(q=cur_state)
     # Send message
     await message.answer(
         question,
@@ -146,14 +155,17 @@ async def process_sport(message: Message, state: FSMContext) -> None:
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
+    current_influence = get_influence_ratios(SUGGEST_TRAINING_POLL[await get_cur_state_name(state)], message.text)
+    global INFLUENCE
+    INFLUENCE = accumulate_influence_ratios(INFLUENCE, current_influence)
+    # Set state
+    await state.set_state(SuggestTrainingPollStates.time)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Get next question
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(SUGGEST_TRAINING_POLL[cur_state])
     answers = get_question_answers(SUGGEST_TRAINING_POLL[cur_state])
-    await state.update_data(q=q_id)
-    # Set state
-    await state.set_state(SuggestTrainingPollStates.training)
-    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
+    await state.update_data(q=cur_state)
     # Send message
     await message.answer(
         question,
@@ -172,17 +184,22 @@ async def process_sport(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
-    logger.info(f'{get_user_string(message)} got question {q_id} [training time]')
+    logger.info(f'{get_user_string(message)} got question {q_id} [time]')
 
 
-@suggest_training_poll_router.message(SuggestTrainingPollStates.training)
+@suggest_training_poll_router.message(SuggestTrainingPollStates.time)
 async def process_training(message: Message, state: FSMContext) -> None:
     # Save answer
-    q, a = (await state.get_data())['q'], int(message.text) * 60
-    await state.update_data({q: a})
+    current_influence = get_influence_ratios(SUGGEST_TRAINING_POLL[await get_cur_state_name(state)], message.text)
+    global INFLUENCE
+    INFLUENCE = accumulate_influence_ratios(INFLUENCE, current_influence)
     # Save params for suggest training
     await state.update_data(working_load=INITIAL_WORKING_LOAD)  # TODO: obtain from db
-    await state.update_data(time=int(message.text) * 60)
+    await state.update_data(time=int(message.text) * 60)  # time in seconds
+    await state.update_data(influence=INFLUENCE)  # {t, wl}
+    # Set state
+    await state.set_state(SuggestTrainingPollStates.training)
+    logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
     # Get results
     results = await state.get_data()
     result = prepare_poll_result(results, SUGGEST_TRAINING_POLL_NAME)
@@ -193,7 +210,7 @@ async def process_training(message: Message, state: FSMContext) -> None:
         # Send message
         await message.answer('''Прекрасно! Следующим сообщением я отправил тебе план упражнений на сегодня. Если ты не совсем понимаешь, что это значит, я могу рассказать тебе немного теории про фитнес и разъяснить, что к чему.''')
         # Parse suggested training
-        training = parse_suggested_training(suggested_training)
+        training = parse_suggested_training(suggested_training, results)
         # Send message with training
         await message.answer(
             training,
@@ -209,10 +226,12 @@ async def process_training(message: Message, state: FSMContext) -> None:
                 resize_keyboard=True,
             ),
         )
+        # Send message
+        await message.answer('''Надеюсь, ты продуктивно проведешь время! Помни, что ты всегда можешь остановиться, если станет слишком тяжело. Не забывай пить достаточно воды во время и после тренировки и сохранять позитивный настрой! Ты делаешь это для себя🙂''')
         logger.info(f'{get_user_string(message)} successfully got suggested training')
     else:
         await message.answer(
-            'Что-то пошло не так и, к сожалению, тренировку сгенерировать не удалось. Подойди к тренеру и попроси его помочь или попробуй снова',
+            ErrorMessages.SUGGEST_TRAINING.value,
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[
                     [
@@ -233,11 +252,11 @@ async def process_training(message: Message, state: FSMContext) -> None:
         logger.warning(f'{get_user_string(message)} failed to sent suggest training poll result')
 
 
-@suggest_training_poll_router.message(text == "объясни, что это значит")
+@suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "объясни, что это значит")
 async def process_fitness_info(message: Message, state: FSMContext) -> None:
     # Send message
     await message.answer(
-        '''Любая тренировка состоит из трех частей: разминка, основная часть и заключительное (или заминка, чтобы было проще запомнить).\nВо время разминки крайне важно “включить” все системы организма, разогреть их и подготовить к усердной работе на полную мощность. По времени она должна составлять примерно 20% от всей тренировки.\nОсновная часть тренировки также делится на две группы упражнений: PRE-SET, или подготовительная часть, нужна для того, чтобы вспомнить навыки и закрепить результаты, полученные на предыдущей тренировке; во время MAIN SET, или главной части, нужно выложиться на полную мощность и настроить себя на улучшение результатов. Основная часть должна составлять примерно 60% от всей тренировки.\nЗаключительная часть тренировки необходима для того, чтобы постепенно снизить нагрузку и вывести организм в состояние, близкое к тому, в котором он был перед началом занятий. Это крайне важно, поскольку резкие перепады нагрузок крайне опасны для организма. Заключительная часть также должна занимать около 20% тренировки.''',
+        '''Любая тренировка состоит из трех частей: разминка (Warm-up), основная часть и заключительное (или заминка (Cool-down), чтобы было проще запомнить).\n\nВо время разминки крайне важно «включить» все системы организма, разогреть их и подготовить к усердной работе на полную мощность. По времени она должна составлять примерно 20% от всей тренировки.\n\nОсновная часть тренировки также делится на две группы упражнений: подготовительная часть (Pre-set), нужна для того, чтобы вспомнить навыки и закрепить результаты, полученные на предыдущей тренировке; во время главной части (Main set), нужно выложиться на полную мощность и настроить себя на улучшение результатов. Основная часть должна составлять примерно 60% от всей тренировки.\n\nЗаключительная часть тренировки необходима для того, чтобы постепенно снизить нагрузку и вывести организм в состояние, близкое к тому, в котором он был перед началом занятий. Это крайне важно, поскольку резкие перепады нагрузок крайне опасны для организма. Заключительная часть также должна занимать около 20% тренировки.''',
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -247,11 +266,11 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
-    logger.info(f'{get_user_string(message)} got explanation about training structure on state {await get_cur_state_name(state)} [объясни, что это значит]')
+    logger.info(f'{get_user_string(message)} got explanation about training structure on state {await get_cur_state_name(state)} [training; объясни, что это значит]')
 
 
-@suggest_training_poll_router.message(text == "ок, все понятно")
-@suggest_training_poll_router.message(text == "ок, понял")
+@suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "ок, все понятно")
+@suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "ок, понял")
 async def process_training_understood(message: Message, state: FSMContext) -> None:
     # Send message
     await message.answer(
