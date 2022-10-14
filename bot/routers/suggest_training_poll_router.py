@@ -25,7 +25,7 @@ class SuggestTrainingPollStates(StatesGroup):
     finish = State()
 
 
-def parse_suggested_training(suggested_training: dict) -> str:
+def parse_suggested_training(suggested_training: dict) -> str:  # TODO: add training time, sport, goal
     exercises = suggested_training['exercises']
     full_exercise_types = {
         'WU': '1️⃣️ WARM-UP',    # 1
@@ -212,9 +212,12 @@ async def process_training(message: Message, state: FSMContext) -> None:
         logger.info(f'{get_user_string(message)} successfully got suggested training')
     else:
         await message.answer(
-            'Что-то пошло не так и, к сожалению, тренировку сгенерировать не удалось. Подойди к тренеру и попроси его помочь',
+            'Что-то пошло не так и, к сожалению, тренировку сгенерировать не удалось. Подойди к тренеру и попроси его помочь или попробуй снова',
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[
+                    [
+                        KeyboardButton(text="составить тренировку"),
+                    ],
                     [
                         KeyboardButton(text="главное меню"),
                     ],
@@ -225,7 +228,7 @@ async def process_training(message: Message, state: FSMContext) -> None:
         logger.warning(f'{get_user_string(message)} failed to get suggested training')
     # Send poll result
     if await upload_poll_result(message, result):
-        logger.info(f'{get_user_string(message)} successfully sent suggest training poll result')
+        logger.info(f'{get_user_string(message)} successfully sent suggest training poll result ({result})')
     else:
         logger.warning(f'{get_user_string(message)} failed to sent suggest training poll result')
 
