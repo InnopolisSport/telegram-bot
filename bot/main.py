@@ -31,6 +31,9 @@ async def main_menu_keyboard(message: Message, msg_text: str) -> None:
                  KeyboardButton(text="показать расписание"),  # TODO: logic
                  # KeyboardButton(text="записаться на занятия"),  # TODO: logic
              ],
+             [
+                 KeyboardButton(text="изменить данные анкеты"),
+             ]
          ],
          resize_keyboard=True,
         ))
@@ -65,7 +68,7 @@ async def command_start(message: Message, state: FSMContext):
 
 
 # Alternative main menu
-@dp.message(IntroPollStates.age, text == 'назад')
+@dp.message(text == 'назад')
 @dp.message(IntroPollStates.finish, text == 'главное меню')
 @dp.message(TrainingFeedbackStates.finish, text == 'главное меню')
 @dp.message(SuggestTrainingPollStates.finish, text == 'главное меню')
@@ -73,6 +76,21 @@ async def alternative_main_menu(message: Message, state: FSMContext) -> None:
     await main_menu_keyboard(message, 'Привет! Какой план на сегодня:')
     logger.info(f'{get_user_string(message)} returned to the main menu [назад, главное меню]')
 
+
+@dp.message(Command(commands=['schedule']))
+@dp.message(text == 'показать расписание')
+async def command_schedule(message: Message) -> None:
+    await message.answer("""Я работаю над тем, чтобы показывать расписание здесь, но нужно ещё немного времени🥺\nПока ты можешь посмотреть его на главной странице сайта [innosport.batalov.me](http://innosport.batalov.me/)""")
+    logger.info(f'{get_user_string(message)} requested a schedule [/schedule; показать расписание]')
+
+
+@dp.message(Command(commands=['survey']))
+@dp.message(text == 'изменить данные анкеты')
+async def command_survey(message: Message, state: FSMContext) -> None:
+    # Starting the intro poll
+    from bot.routers.intro_poll_router import start_intro_poll
+    await start_intro_poll(message, state)
+    logger.info(f'{get_user_string(message)} requested a change of the survey [/survey; изменить данные анкеты]')
 
 # @dp.message(Command(commands=['help']))
 # async def command_help(message: Message):

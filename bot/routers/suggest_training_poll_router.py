@@ -272,7 +272,7 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
 @suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "ок, все понятно")
 @suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "ок, понял")
 async def process_training_understood(message: Message, state: FSMContext) -> None:
-    # Send message
+    # Send messages
     await message.answer(
         "Удачи! Возвращайся, когда снова понадобится моя помощь!",
         reply_markup=ReplyKeyboardMarkup(
@@ -287,6 +287,7 @@ async def process_training_understood(message: Message, state: FSMContext) -> No
             resize_keyboard=True,
         ),
     )
+    await message.answer("""Не забудь оставить фидбек после тренировки. Во-первых, это поможет мне скорректировать следующие занятия под твой ритм. Во-вторых только после обратной связи тренировка зачтется в твоём академическом прогрессе😉\n\nОсторожно! Нажав «главное меню» сейчас, ты упустишь возможность отчитаться по прошедшему занятию. Вернуться назад уже не получится.""")
     logger.info(f'{get_user_string(message)} understood training structure [ок, все понятно; ок, понял]')
     # Set state
     await state.set_state(SuggestTrainingPollStates.finish)
@@ -307,7 +308,6 @@ async def process_finish(message: Message, state: FSMContext) -> None:
                     KeyboardButton(text="составить следующую тренировку"),
                 ],
                 [
-                    KeyboardButton(text="изменить данные анкеты"),
                     KeyboardButton(text="главное меню"),
                 ],
             ],
