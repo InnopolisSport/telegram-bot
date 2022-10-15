@@ -19,12 +19,14 @@ class NotifierRouterStates(StatesGroup):
     message = State()
 
 
-async def send_message(user_id: int, text: str, disable_notification: bool = False) -> bool:
+async def send_message(user_id: int, message: Message, disable_notification: bool = False) -> bool:
     # Try to send message safely
     try:
-        await bot.send_message(user_id, text, disable_notification=disable_notification)
+        await bot.copy_message(user_id, from_chat_id=message.chat.id, message_id=message.message_id,
+                               disable_notification=disable_notification)
     except Exception as error:
         logger.error(f"Error while sending message to [ID:{user_id}]: {error}")
+        logger.exception(error)
         return False
     logger.info(f"Target [ID:{user_id}]: success")
     return True
@@ -37,7 +39,7 @@ async def broadcaster(message: Message) -> int:
         if users is not None:
             for user in users:
                 tg_id = user['telegram_id']
-                if await send_message(tg_id, message.text):
+                if await send_message(tg_id, message):
                     count += 1
                 await asyncio.sleep(.05)  # 20 messages per second (Limit: 30 messages per second)
         else:
@@ -60,7 +62,7 @@ async def command_notify_all(message: Message, state: FSMContext) -> None:
 async def call_broadcaster(message: Message, state: FSMContext) -> None:
     # Get number of success sent messages
     count = await broadcaster(message)
-    logger.info(f'{get_user_string(message)} sent a notification to all users [{count} messages]: {message.text}')
+    logger.info(f'{get_user_string(message)} sent a notification to all users [{count} messages]: {message.text} {message}')
     # Reset state
     await state.clear()
     # Send message
