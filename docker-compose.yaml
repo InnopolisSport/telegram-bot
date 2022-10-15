@@ -1,0 +1,19 @@
+version: '3.5'
+services:
+  bot:
+    container_name: sport_bot
+    build:
+      context: ../bot
+      dockerfile: Dockerfile
+      args:
+        - PYTHON_VERSION=3.7
+    restart: always
+    volumes:
+      - ../bot:/src
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      DEBUG: 'true'
+    command: bash -c 'while !</dev/tcp/db/5432; do sleep 1; done; python manage.py runserver

@@ -1,2 +1,4 @@
-API_TOKEN = '5210388390:AAHGSbn4NPLxtlK5nqDDSZUr3pTOpyUjzqo'
+import os
+
+API_TOKEN = os.environ.get('TOKEN')
 JWT_EXPIRATION_TIME = 7
