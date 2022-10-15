@@ -50,15 +50,15 @@ async def fetch_poll_by_name(message: Message, poll_name: str) -> dict:
 
 async def upload_poll_result(message: Message, data: dict) -> bool:
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.post(f'{API_URL}/training_suggestor/poll_result', json=data) as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
+        try:
+            async with session.post(f'{API_URL}/training_suggestor/poll_result', json=data, raise_for_status=True) as response:
+                json = await response.json()
+                status_code = response.status
+        except Exception as error:
+            logger.error(f'{get_user_string(message)} failed to upload poll result {data} ({error})')
+            return False
         logger.info(f'{get_user_string(message)} successfully upload poll result {data} ({status_code} {json})')
         return True
-    else:
-        logger.error(f'{get_user_string(message)} failed to upload poll result {data} ({status_code} {json})')
-        return False
 
 
 async def passed_intro_poll(message: Message) -> bool | None:
@@ -90,3 +90,16 @@ async def upload_training_result(message: Message, data: dict) -> bool:  # uploa
     else:
         logger.error(f'{get_user_string(message)} failed to upload training result {data} ({status_code} {json})')
         return False
+
+
+async def get_all_users(message: Message) -> list[dict] | None:
+    async with auth.SportTelegramSession(message.from_user) as session:
+        try:
+            async with session.get(f'{API_URL}/training_suggestor/tg_users', raise_for_status=True) as response:
+                json = await response.json()
+                status_code = response.status
+        except Exception as error:
+            logger.error(f'{get_user_string(message)} failed to fetch all users ({error})')
+            return None
+        logger.info(f'{get_user_string(message)} successfully fetched all users ({status_code} {json})')
+        return json
