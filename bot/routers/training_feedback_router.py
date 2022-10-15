@@ -1,3 +1,5 @@
+import math
+
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -7,7 +9,7 @@ from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
 from loguru import logger
 from bot.filters import text
 from bot.routers import POLL_NAMES
-from bot.api import fetch_poll_by_name, upload_poll_result
+from bot.api import fetch_poll_by_name, upload_poll_result, upload_training_result
 from bot.utils import prepare_poll_questions, get_cur_state_name, get_question_text_id, get_question_answers, \
     get_user_string, prepare_poll_result, ErrorMessages
 
@@ -27,8 +29,6 @@ class TrainingFeedbackStates(StatesGroup):
     finish = State()
 
 
-@training_feedback_poll_router.message(Command(commands=["training_feedback"]))
-@training_feedback_poll_router.message(text == "training feedback")
 @training_feedback_poll_router.message(text == "перейти к вопросам фидбека")
 async def command_training_feedback(message: Message, state: FSMContext) -> None:
     # Starting the training feedback poll
@@ -36,7 +36,8 @@ async def command_training_feedback(message: Message, state: FSMContext) -> None
     TRAINING_FEEDBACK_POLL = await fetch_poll_by_name(message, TRAINING_FEEDBACK_POLL_NAME)
     TRAINING_FEEDBACK_POLL = prepare_poll_questions(TRAINING_FEEDBACK_POLL['questions'])
     # To ensure that we are starting from the beginning
-    await state.clear()
+    # await state.clear()
+    await state.set_state(state=None)  # To keep the data
     # Set state
     await state.set_state(TrainingFeedbackStates.five_point_scale)
     logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
@@ -193,14 +194,31 @@ async def process_breaks(message: Message, state: FSMContext) -> None:
 #     )
 
 
+def get_sport_hours_data(time: int) -> dict:
+    return {
+        'link': 'https://www.google.com/',  # TODO: change or omit in future
+        'hours': f'{math.ceil(time / 3600)}',  # 1h - 30, 45, 60; 2h - 90, 120
+        'training_type': '5',  # TODO: get from db (5 is swimming)
+        'student_comment': 'Отправлено с помощью телеграм-бота',  # TODO: Maybe change to something else
+    }
+
+
 async def save_and_finish(message: Message, state: FSMContext) -> None:
+    # Prepare poll result
     data = await state.get_data()
     result = prepare_poll_result(data, TRAINING_FEEDBACK_POLL_NAME)
+    # Send poll result
     if await upload_poll_result(message, result):
+        logger.info(f'{get_user_string(message)} successfully sent training feedback poll result ({result})')
+    else:
+        logger.warning(f'{get_user_string(message)} failed to sent training feedback poll result')
+    # Upload training result for getting sport hours
+    sport_hours_data = get_sport_hours_data(data['time'])
+    if await upload_training_result(message, sport_hours_data):
         # Send message
         await message.answer('Ты молодец! Я обязательно учту это.')
         await message.answer(
-            "Спасибо за обратную связь! Это поможет мне сделать твои тренировки лучше. Возвращайся, когда снова понадобится моя помощь!",
+            '''Спасибо за обратную связь! Это поможет мне сделать твои тренировки лучше. Я создал запрос на выставление академических часов за тренировку. Они зачтутся, когда учитель подтвердит твое присутствие!😃\n\nВозвращайся, когда снова понадобится моя помощь!''',
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[
                     [
@@ -210,7 +228,7 @@ async def save_and_finish(message: Message, state: FSMContext) -> None:
                 resize_keyboard=True,
             ),
         )
-        logger.info(f'{get_user_string(message)} successfully sent training feedback poll result ({result})')
+        logger.info(f'{get_user_string(message)} successfully sent sport hours data ({sport_hours_data})')
     else:
         # Send message
         await message.answer(
@@ -227,7 +245,7 @@ async def save_and_finish(message: Message, state: FSMContext) -> None:
                 resize_keyboard=True,
             ),
         )
-        logger.warning(f'{get_user_string(message)} failed to sent training feedback poll result')
+        logger.warning(f'{get_user_string(message)} failed to sent sport hours data')
     logger.info(f'{get_user_string(message)} finished training feedback poll')
 
 

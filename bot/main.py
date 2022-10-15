@@ -1,13 +1,11 @@
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, InlineKeyboardButton, \
+    InlineKeyboardMarkup
 
 from loguru import logger
 from bot.filters import text
 from bot.loader import dp, bot
-from bot.routers.intro_poll_router import IntroPollStates
-from bot.routers.suggest_training_poll_router import SuggestTrainingPollStates
-from bot.routers.training_feedback_router import TrainingFeedbackStates
 from bot.api import get_auth_status
 from bot.utils import get_user_string
 
@@ -46,7 +44,16 @@ async def get_me(message: Message):
         await message.answer(f"*{data['first_name']} {data['last_name']}*\n{data['email']}")
         logger.info(f'{get_user_string(message)} sent /me command ({data}) [authorized]')
     else:
-        await message.answer('''Привет!\nЧтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, зайди в профиль по ссылке: [innosport.batalov.me](http://innosport.batalov.me/).''')
+        await message.answer(
+            '''Привет!\nЧтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, зайди в профиль на сайте.''',
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="авторизоваться на сайте", url="https://innosport.batalov.me/"),
+                    ]
+                ]
+            )
+        )
         logger.warning(f'{get_user_string(message)} sent /me command [not authorized]')
 
 
@@ -60,7 +67,16 @@ async def command_start(message: Message, state: FSMContext):
             await main_menu_keyboard(message, '''Привет!\nЯ бот _innosport+_, и моя задача — усовершенствовать твой подход к спорту. Я могу составить для тебя персональную тренировку, рассказать о доступных занятиях и секциях и сориентировать в твоем расписании! Какой план на сегодня:''')
             logger.info(f'{get_user_string(message)} sent /start command [main menu, authorized]')
         else:
-            await message.answer('''Привет!\nЧтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, зайди в профиль по ссылке: [innosport.batalov.me](http://innosport.batalov.me/).''', reply_markup=ReplyKeyboardRemove())
+            await message.answer(
+                '''Привет!\nЧтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, зайди в профиль на сайте.''',
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(text="авторизоваться на сайте", url="https://innosport.batalov.me/"),
+                        ]
+                    ]
+                )
+            )
             logger.warning(f'{get_user_string(message)} sent /start command [main menu, not authorized]')
     else:
         await main_menu_keyboard(message, '')
@@ -69,9 +85,7 @@ async def command_start(message: Message, state: FSMContext):
 
 # Alternative main menu
 @dp.message(text == 'назад')
-@dp.message(IntroPollStates.finish, text == 'главное меню')
-@dp.message(TrainingFeedbackStates.finish, text == 'главное меню')
-@dp.message(SuggestTrainingPollStates.finish, text == 'главное меню')
+@dp.message(text == 'главное меню')
 async def alternative_main_menu(message: Message, state: FSMContext) -> None:
     await main_menu_keyboard(message, 'Привет! Какой план на сегодня:')
     logger.info(f'{get_user_string(message)} returned to the main menu [назад, главное меню]')
@@ -80,7 +94,16 @@ async def alternative_main_menu(message: Message, state: FSMContext) -> None:
 @dp.message(Command(commands=['schedule']))
 @dp.message(text == 'показать расписание')
 async def command_schedule(message: Message) -> None:
-    await message.answer("""Я работаю над тем, чтобы показывать расписание здесь, но нужно ещё немного времени🥺\nПока ты можешь посмотреть его на главной странице сайта [innosport.batalov.me](http://innosport.batalov.me/)""")
+    await message.answer(
+        """Я работаю над тем, чтобы показывать расписание здесь, но нужно ещё немного времени🥺\nПока ты можешь посмотреть его на главной странице сайта.""",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="перейти на сайт", url="https://innosport.batalov.me/profile"),
+                ]
+            ]
+        )
+    )
     logger.info(f'{get_user_string(message)} requested a schedule [/schedule; показать расписание]')
 
 

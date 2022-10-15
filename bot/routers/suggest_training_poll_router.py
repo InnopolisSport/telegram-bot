@@ -45,7 +45,7 @@ def parse_suggested_training(suggested_training: dict, info: dict) -> str:  # TO
         'CD': [],
     }
     training = 'План тренировки на сегодня:\n\n'
-    training += f"*{info['sport']}*, _{int(info['time'] / 60)} минут_\n*Цель*: {info['goal']}\n\n"
+    training += f"*{info['sport']}*, _{info['time'] // 60} минут_\n*Цель*: {info['goal']}\n\n"
     for exercise in exercises:
         training_skeleton[exercise['type']].append(exercise)
 

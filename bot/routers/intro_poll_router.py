@@ -31,8 +31,6 @@ class IntroPollStates(StatesGroup):
     finish = State()
 
 
-@intro_poll_router.message(Command(commands=["intro_poll"]))
-@intro_poll_router.message(text == 'изменить данные анкеты')  # TODO: Add alternative text for editing intro poll
 async def start_intro_poll(message: Message, state: FSMContext) -> None:
     # Get intro poll from db
     global INTRO_POLL

@@ -1,4 +1,5 @@
 from aiogram.types import Message
+from aiohttp import FormData
 
 from loguru import logger
 from bot import auth
@@ -74,3 +75,18 @@ async def passed_intro_poll(message: Message) -> bool | None:
         logger.error(
             f'{get_user_string(message)} failed to check {POLL_NAMES["intro_poll"]} poll result ({status_code})')
         return None
+
+
+async def upload_training_result(message: Message, data: dict) -> bool:  # upload for getting sport hours
+    async with auth.SportTelegramSession(message.from_user) as session:
+        form_data = FormData(data)
+        form_data._is_multipart = True
+        async with session.post(f'{API_URL}/selfsport/upload', data=form_data) as response:
+            json = await response.json()
+            status_code = response.status
+    if status_code == 200:
+        logger.info(f'{get_user_string(message)} successfully upload training result {data} ({status_code} {json})')
+        return True
+    else:
+        logger.error(f'{get_user_string(message)} failed to upload training result {data} ({status_code} {json})')
+        return False
