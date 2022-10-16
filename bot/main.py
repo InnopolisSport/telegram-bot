@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogram.filters import Command, ChatMemberUpdatedFilter, MEMBER, IS_NOT_MEMBER, IS_MEMBER, JOIN_TRANSITION
 from aiogram.fsm.context import FSMContext
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, InlineKeyboardButton, \
@@ -59,9 +61,14 @@ async def get_me(message: Message):
         logger.warning(f'{get_user_string(message)} sent /me command [not authorized]')
 
 
+@dp.message(connected_website)  # If the user is connected (authorized) from website at the first time
+async def connected_website_handler(message: Message, state: FSMContext):
+    await asyncio.sleep(1)
+    await command_start(message, state)
+
+
 # Main menu
 @dp.message(Command(commands=['start']))
-@dp.message(connected_website)  # If the user is connected (authorized) from website at the first time
 async def command_start(message: Message, state: FSMContext):
     await state.clear()
     data = await get_auth_status(message)
