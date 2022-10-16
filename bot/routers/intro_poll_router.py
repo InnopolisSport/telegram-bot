@@ -32,6 +32,7 @@ class IntroPollStates(StatesGroup):
 
 
 async def start_intro_poll(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} requested an intro poll [/intro_poll], text: {message.text}')
     # Get intro poll from db
     global INTRO_POLL
     INTRO_POLL = await fetch_poll_by_name(message, INTRO_POLL_NAME)
@@ -40,7 +41,7 @@ async def start_intro_poll(message: Message, state: FSMContext) -> None:
     await state.clear()
     # Send message
     await message.answer(
-        '''Чтобы я мог составить оптимальный план занятия, мне нужно узнать тебя лучше. Пожалуйста, пройти небольшую анкету, чтобы я составил твой профиль. Проходи честно (я никому не расскажу твои ответы, но смогу лучше понять твои цели от спорта😉).\nВопросов будет 13, но не беспокойся, каждый раз отвечать на все не придётся. Я запомню данные о тебе, а затем ты сможешь обновлять их по мере необходимости.''',
+        '''Чтобы я мог составить оптимальный план занятия, мне нужно узнать тебя лучше. Пожалуйста, пройти небольшую анкету, чтобы я составил твой профиль. Проходи честно (я никому не расскажу твои ответы, но смогу лучше понять твои цели от спорта😉).\nВопросов будет много, но не беспокойся, каждый раз отвечать на все не придётся. Я запомню данные о тебе, а затем ты сможешь обновлять их по мере необходимости.''',
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -61,6 +62,7 @@ async def start_intro_poll(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.age, text == "ок")
 async def process_age(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Get next question
     cur_state = await get_cur_state_name(state)
     question, q_id = get_question_text_id(INTRO_POLL[cur_state])
@@ -90,6 +92,7 @@ async def process_age(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.sex)
 async def process_sex(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -122,6 +125,7 @@ async def process_sex(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.height)
 async def process_height(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -142,6 +146,7 @@ async def process_height(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.weight, any_digits)
 async def process_weight(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], int(message.text)
     await state.update_data({q: a})
@@ -162,6 +167,7 @@ async def process_weight(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.weight)
 async def process_height(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Send message
     await message.answer(
         ErrorMessages.REPEAT_INPUT.value,
@@ -172,6 +178,7 @@ async def process_height(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.medical_group, any_digits)
 async def process_medical_group(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], int(message.text)
     await state.update_data({q: a})
@@ -205,6 +212,7 @@ async def process_medical_group(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.medical_group)
 async def process_weight(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Send message
     await message.answer(
         ErrorMessages.REPEAT_INPUT.value,
@@ -215,6 +223,7 @@ async def process_weight(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.sport_experience)
 async def process_sport_experience(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -248,8 +257,9 @@ async def process_sport_experience(message: Message, state: FSMContext) -> None:
     logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')
 
 
-@intro_poll_router.message(IntroPollStates.sport_training_frequency)
+@intro_poll_router.message(IntroPollStates.sport_training_frequency, ~(text == 'не было никогда'))
 async def process_sport_training_frequency(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -280,6 +290,7 @@ async def process_sport_training_frequency(message: Message, state: FSMContext) 
 
 @intro_poll_router.message(IntroPollStates.sport_training_time)
 async def process_sport_training_time(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -314,6 +325,7 @@ async def process_sport_training_time(message: Message, state: FSMContext) -> No
 
 @intro_poll_router.message(IntroPollStates.sport_desire_level)
 async def process_sport_desire_level(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -350,7 +362,13 @@ async def process_sport_desire_level(message: Message, state: FSMContext) -> Non
 
 
 @intro_poll_router.message(IntroPollStates.pulse_rest)
+@intro_poll_router.message(IntroPollStates.sport_training_frequency, text == 'не было никогда')
 async def process_pulse_rest(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
+    # Check for state (if user skipped previous questions)
+    if await state.get_state() == IntroPollStates.sport_training_frequency:
+        await state.set_state(IntroPollStates.pulse_rest)
+        logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)} [questions skipped]')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -389,6 +407,7 @@ async def process_pulse_rest(message: Message, state: FSMContext) -> None:
 
 @intro_poll_router.message(IntroPollStates.finish)
 async def process_finish(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})

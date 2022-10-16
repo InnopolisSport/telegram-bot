@@ -10,4 +10,4 @@ fallback_router = Router()
 @fallback_router.message()
 async def fallback(message: Message):
     await message.answer(ErrorMessages.UNKNOWN_COMMAND.value)
-    logger.info(f'{get_user_string(message)} fallback: {message.text}')
+    logger.info(f'{get_user_string(message)} fallback text: {message.text}, mes: {message}')
