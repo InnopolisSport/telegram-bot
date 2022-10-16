@@ -30,6 +30,7 @@ class TrainingFeedbackStates(StatesGroup):
 
 @training_feedback_poll_router.message(text == "перейти к вопросам фидбека")
 async def command_training_feedback(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Starting the training feedback poll
     global TRAINING_FEEDBACK_POLL
     TRAINING_FEEDBACK_POLL = await fetch_poll_by_name(message, TRAINING_FEEDBACK_POLL_NAME)
@@ -58,6 +59,7 @@ async def command_training_feedback(message: Message, state: FSMContext) -> None
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.five_point_scale)
 async def process_five_point_scale(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -82,6 +84,7 @@ async def process_five_point_scale(message: Message, state: FSMContext) -> None:
 
 @training_feedback_poll_router.message(TrainingFeedbackStates.breaks)
 async def process_breaks(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -203,6 +206,7 @@ def get_sport_hours_data(time: int) -> dict:
 
 
 async def save_and_finish(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Prepare poll result
     data = await state.get_data()
     result = prepare_poll_result(data, TRAINING_FEEDBACK_POLL_NAME)

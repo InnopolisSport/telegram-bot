@@ -77,6 +77,7 @@ def prepare_params_suggest(results: dict) -> dict:
 @suggest_training_poll_router.message(text == "составить тренировку")
 @suggest_training_poll_router.message(SuggestTrainingPollStates.finish, text == "составить следующую тренировку")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Check for intro poll passing
     passed = await passed_intro_poll(message)
     if passed is None:
@@ -125,6 +126,7 @@ async def command_suggest_training(message: Message, state: FSMContext) -> None:
 
 @suggest_training_poll_router.message(SuggestTrainingPollStates.goal)
 async def process_goal(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -152,6 +154,7 @@ async def process_goal(message: Message, state: FSMContext) -> None:
 
 @suggest_training_poll_router.message(SuggestTrainingPollStates.sport)
 async def process_sport(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     q, a = (await state.get_data())['q'], message.text
     await state.update_data({q: a})
@@ -189,6 +192,7 @@ async def process_sport(message: Message, state: FSMContext) -> None:
 
 @suggest_training_poll_router.message(SuggestTrainingPollStates.time)
 async def process_training(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Save answer
     current_influence = get_influence_ratios(SUGGEST_TRAINING_POLL[await get_cur_state_name(state)], message.text)
     global INFLUENCE
@@ -254,6 +258,7 @@ async def process_training(message: Message, state: FSMContext) -> None:
 
 @suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "объясни, что это значит")
 async def process_fitness_info(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Send message
     await message.answer(
         '''Любая тренировка состоит из трех частей: разминка (Warm-up), основная часть и заключительное (или заминка (Cool-down), чтобы было проще запомнить).\n\nВо время разминки крайне важно «включить» все системы организма, разогреть их и подготовить к усердной работе на полную мощность. По времени она должна составлять примерно 20% от всей тренировки.\n\nОсновная часть тренировки также делится на две группы упражнений: подготовительная часть (Pre-set), нужна для того, чтобы вспомнить навыки и закрепить результаты, полученные на предыдущей тренировке; во время главной части (Main set), нужно выложиться на полную мощность и настроить себя на улучшение результатов. Основная часть должна составлять примерно 60% от всей тренировки.\n\nЗаключительная часть тренировки необходима для того, чтобы постепенно снизить нагрузку и вывести организм в состояние, близкое к тому, в котором он был перед началом занятий. Это крайне важно, поскольку резкие перепады нагрузок крайне опасны для организма. Заключительная часть также должна занимать около 20% тренировки.''',
@@ -269,9 +274,9 @@ async def process_fitness_info(message: Message, state: FSMContext) -> None:
     logger.info(f'{get_user_string(message)} got explanation about training structure on state {await get_cur_state_name(state)} [training; объясни, что это значит]')
 
 
-@suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "ок, все понятно")
-@suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "ок, понял")
+@suggest_training_poll_router.message(SuggestTrainingPollStates.training, text.in_({"ок, все понятно", "ок, понял"}))
 async def process_training_understood(message: Message, state: FSMContext) -> None:
+    logger.info(f'{get_user_string(message)} sent text: {message.text}')
     # Send messages
     await message.answer(
         "Удачи! Возвращайся, когда снова понадобится моя помощь!",
