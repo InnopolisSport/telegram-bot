@@ -3,14 +3,14 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
-
 from loguru import logger
+
+from bot.api import passed_intro_poll, fetch_poll_by_name, suggest_training, upload_poll_result, get_auth_status
 from bot.filters import text
 from bot.routers import POLL_NAMES
-from bot.api import passed_intro_poll, fetch_poll_by_name, suggest_training, upload_poll_result
 from bot.utils import get_user_string, prepare_poll_questions, get_cur_state_name, get_question_text_id, \
     get_question_answers, prepare_poll_result, ErrorMessages, INITIAL_INFLUENCE_RATIOS, get_influence_ratios, \
-    accumulate_influence_ratios
+    accumulate_influence_ratios, not_authorized_keyboard
 
 INITIAL_WORKING_LOAD = 100_000  # TODO move to db
 
@@ -77,10 +77,17 @@ def prepare_params_suggest(results: dict) -> dict:
 @suggest_training_poll_router.message(text == "составить тренировку")
 @suggest_training_poll_router.message(SuggestTrainingPollStates.finish, text == "составить следующую тренировку")
 async def command_suggest_training(message: Message, state: FSMContext) -> None:
-    logger.info(f'{get_user_string(message)} sent text: {message.text}')
+    logger.info(f'{get_user_string(message)} start , sent text: {message.text}')
+    # Check for authorization
+    if await get_auth_status(message) is None:
+        # Send message
+        await not_authorized_keyboard(message)
+        logger.warning(f'{get_user_string(message)} requested suggest training poll [/suggest_training], but not authorized')
+        return
     # Check for intro poll passing
     passed = await passed_intro_poll(message)
     if passed is None:
+        # Send message
         await message.answer(ErrorMessages.REQUEST_FAILED.value)
         logger.warning(f'{get_user_string(message)} failed to start suggest training poll')
         return
@@ -92,6 +99,12 @@ async def command_suggest_training(message: Message, state: FSMContext) -> None:
         # Starting the suggest training poll
         global SUGGEST_TRAINING_POLL
         SUGGEST_TRAINING_POLL = await fetch_poll_by_name(message, SUGGEST_TRAINING_POLL_NAME)
+        # Check for success fetch
+        if SUGGEST_TRAINING_POLL is None:
+            # Send message
+            await message.answer(ErrorMessages.REQUEST_FAILED.value)
+            logger.warning(f'{get_user_string(message)} failed to fetch suggest training poll')
+            return
         SUGGEST_TRAINING_POLL = prepare_poll_questions(SUGGEST_TRAINING_POLL['questions'])
         # To ensure that we are starting from the beginning
         await state.clear()
@@ -210,7 +223,7 @@ async def process_training(message: Message, state: FSMContext) -> None:
     params = prepare_params_suggest(results)
     # Get suggested training
     suggested_training = await suggest_training(message, params)
-    if suggested_training:
+    if suggested_training is not None:
         # Send message
         await message.answer('''Прекрасно! Следующим сообщением я отправил тебе план упражнений на сегодня. Если ты не совсем понимаешь, что это значит, я могу рассказать тебе немного теории про фитнес и разъяснить, что к чему.''')
         # Parse suggested training

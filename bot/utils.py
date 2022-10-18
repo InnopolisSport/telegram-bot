@@ -2,7 +2,8 @@ import re
 from enum import Enum
 
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import Message, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, \
+    ReplyKeyboardRemove
 
 
 class ErrorMessages(Enum):
@@ -16,6 +17,42 @@ INITIAL_INFLUENCE_RATIOS = {
     't': 1,
     'wl': 1,
 }
+
+
+async def main_menu_keyboard(message: Message, msg_text: str) -> None:
+    await message.answer(
+        msg_text,
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="составить тренировку"),
+                ],
+                [
+                    KeyboardButton(text="показать расписание"),  # TODO: logic
+                    # KeyboardButton(text="записаться на занятия"),  # TODO: logic
+                ],
+                # [
+                #     KeyboardButton(text="изменить данные анкеты"),
+                # ]
+            ],
+            resize_keyboard=True,
+        )
+    )
+
+
+async def not_authorized_keyboard(message: Message) -> None:
+    await message.answer(
+        '''Чтобы мы продолжили работу, нужно авторизоваться в системе _innosport+_. Пожалуйста, зайди в профиль на сайте.''',
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="авторизоваться на сайте", url="https://innosport.batalov.me/"),
+                ]
+            ]
+        )
+    )
+    ans = await message.answer('.', reply_markup=ReplyKeyboardRemove())
+    await ans.delete()
 
 
 def get_user_string(message: Message):

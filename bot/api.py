@@ -1,7 +1,7 @@
 from aiogram.types import Message
 from aiohttp import FormData
-
 from loguru import logger
+
 from bot import auth
 from bot.routers import POLL_NAMES
 from bot.utils import get_user_string
@@ -9,43 +9,43 @@ from bot.utils import get_user_string
 API_URL = 'http://innosport.batalov.me/api'
 
 
-async def get_auth_status(message: Message) -> dict:
+async def get_auth_status(message: Message) -> dict | None:
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/profile/me') as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
+        try:
+            async with session.get(f'{API_URL}/profile/me', raise_for_status=True) as response:
+                json = await response.json()
+                status_code = response.status
+        except Exception as error:
+            logger.error(f'{get_user_string(message)} is not authorized (or failed to fetch) [{error}]')
+            return None
         logger.info(f'{get_user_string(message)} is authorized ({status_code} {json})')
         return dict(json)
-    else:
-        logger.error(f'{get_user_string(message)} is not authorized ({status_code} {json})')
-        return {}
 
 
-async def suggest_training(message: Message, params: dict) -> dict:
+async def suggest_training(message: Message, params: dict) -> dict | None:
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/training_suggestor/suggest', params=params) as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
+        try:
+            async with session.get(f'{API_URL}/training_suggestor/suggest', params=params, raise_for_status=True) as response:
+                json = await response.json()
+                status_code = response.status
+        except Exception as error:
+            logger.error(f'{get_user_string(message)} failed to suggest training ({error})')
+            return None
         logger.info(f'{get_user_string(message)} received suggested training ({status_code} {json})')
         return dict(json)
-    else:
-        logger.info(f'{get_user_string(message)} failed to receive suggested training ({status_code} {json})')
-        return {}
 
 
-async def fetch_poll_by_name(message: Message, poll_name: str) -> dict:
+async def fetch_poll_by_name(message: Message, poll_name: str) -> dict | None:
     async with auth.SportTelegramSession(message.from_user) as session:
-        async with session.get(f'{API_URL}/training_suggestor/poll/{poll_name}') as response:
-            json = await response.json()
-            status_code = response.status
-    if status_code == 200:
+        try:
+            async with session.get(f'{API_URL}/training_suggestor/poll/{poll_name}', raise_for_status=True) as response:
+                json = await response.json()
+                status_code = response.status
+        except Exception as error:
+            logger.error(f'{get_user_string(message)} failed to fetch poll {poll_name} ({error})')
+            return None
         logger.info(f'{get_user_string(message)} successfully fetched the poll {poll_name} ({status_code} {json})')
         return dict(json)
-    else:
-        logger.error(f'{get_user_string(message)} failed to fetch the poll {poll_name} ({status_code} {json})')
-        return {}
 
 
 async def upload_poll_result(message: Message, data: dict) -> bool:

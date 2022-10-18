@@ -1,8 +1,8 @@
-import logging
 from typing import Optional
 
-from logger.settings import InterceptHandler, LoguruHandler
 from loguru import logger
+
+from logger.settings import LoguruHandler
 
 
 def setup_logging(extra_handlers: Optional[list[LoguruHandler]] = None) -> None:

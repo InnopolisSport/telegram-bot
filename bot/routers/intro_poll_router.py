@@ -1,15 +1,14 @@
 from aiogram import Router
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
-
 from loguru import logger
+
+from bot.api import fetch_poll_by_name, upload_poll_result, get_auth_status
 from bot.filters import any_digits, text
 from bot.routers import POLL_NAMES
-from bot.api import fetch_poll_by_name, upload_poll_result
 from bot.utils import prepare_poll_questions, get_cur_state_name, get_question_text_id, get_question_answers, \
-    prepare_poll_result, get_user_string, ErrorMessages
+    prepare_poll_result, get_user_string, ErrorMessages, not_authorized_keyboard
 
 intro_poll_router = Router()
 INTRO_POLL_NAME = POLL_NAMES['intro_poll']
@@ -32,10 +31,23 @@ class IntroPollStates(StatesGroup):
 
 
 async def start_intro_poll(message: Message, state: FSMContext) -> None:
-    logger.info(f'{get_user_string(message)} requested an intro poll [/intro_poll], text: {message.text}')
+    logger.info(f'{get_user_string(message)} started the intro poll, text: {message.text}')
+    # Check for authorization
+    if await get_auth_status(message) is None:
+        # Send message
+        await not_authorized_keyboard(message)
+        logger.warning(f'{get_user_string(message)} requested an intro poll [/survey], but not authorized')
+        return
     # Get intro poll from db
     global INTRO_POLL
     INTRO_POLL = await fetch_poll_by_name(message, INTRO_POLL_NAME)
+    # Check for success fetch
+    if INTRO_POLL is None:
+        # Send message
+        await message.answer(ErrorMessages.REQUEST_FAILED.value)
+        logger.warning(f'{get_user_string(message)} failed to fetch intro poll')
+        return
+    # Prepare intro poll questions
     INTRO_POLL = prepare_poll_questions(INTRO_POLL['questions'])
     # To ensure that we are starting from the beginning
     await state.clear()
@@ -54,7 +66,6 @@ async def start_intro_poll(message: Message, state: FSMContext) -> None:
             resize_keyboard=True,
         ),
     )
-    logger.info(f'{get_user_string(message)} sent /intro_poll command [изменить данные анкеты]')
     # Set state
     await state.set_state(IntroPollStates.age)
     logger.info(f'{get_user_string(message)} set state to {await get_cur_state_name(state)}')

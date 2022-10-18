@@ -5,7 +5,6 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
-
 from loguru import logger
 
 from bot.api import get_all_users
@@ -51,6 +50,7 @@ async def broadcaster(message: Message) -> int:
 
 @notifier_router.message(Command(commands=['notify_all']))
 async def command_notify_all(message: Message, state: FSMContext) -> None:
+
     # Send message
     await message.answer('Введите сообщение, которое хотите отправить всем пользователям:', reply_markup=ReplyKeyboardRemove())
     # Set state

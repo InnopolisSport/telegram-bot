@@ -4,11 +4,11 @@ from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup
-
 from loguru import logger
+
+from bot.api import fetch_poll_by_name, upload_poll_result, upload_training_result
 from bot.filters import text
 from bot.routers import POLL_NAMES
-from bot.api import fetch_poll_by_name, upload_poll_result, upload_training_result
 from bot.utils import prepare_poll_questions, get_cur_state_name, get_question_text_id, get_question_answers, \
     get_user_string, prepare_poll_result, ErrorMessages
 
@@ -34,6 +34,12 @@ async def command_training_feedback(message: Message, state: FSMContext) -> None
     # Starting the training feedback poll
     global TRAINING_FEEDBACK_POLL
     TRAINING_FEEDBACK_POLL = await fetch_poll_by_name(message, TRAINING_FEEDBACK_POLL_NAME)
+    # Check for success fetch
+    if TRAINING_FEEDBACK_POLL is None:
+        # Send message
+        await message.answer(ErrorMessages.REQUEST_FAILED.value)
+        logger.warning(f'{get_user_string(message)} failed to fetch training feedback poll')
+        return
     TRAINING_FEEDBACK_POLL = prepare_poll_questions(TRAINING_FEEDBACK_POLL['questions'])
     # To ensure that we are starting from the beginning
     # await state.clear()
