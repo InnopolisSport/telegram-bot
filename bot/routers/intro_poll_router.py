@@ -444,4 +444,6 @@ async def process_finish(message: Message, state: FSMContext) -> None:
                 resize_keyboard=True,
             ),
         )
+        # Reset state
+        await state.clear()
         logger.warning(f'{get_user_string(message)} failed to finish intro poll')

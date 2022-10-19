@@ -35,8 +35,8 @@ dp = Dispatcher()
 dp.startup.register(on_startup_event)
 dp.shutdown.register(on_shutdown_event)
 # Include routers
-dp.include_router(intro_poll_router)
 dp.include_router(suggest_training_poll_router)
+dp.include_router(intro_poll_router)
 dp.include_router(training_feedback_poll_router)
 dp.include_router(notifier_router)
 dp.include_router(fallback_router)  # must be included last

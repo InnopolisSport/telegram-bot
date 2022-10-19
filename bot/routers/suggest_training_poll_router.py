@@ -263,10 +263,10 @@ async def process_training(message: Message, state: FSMContext) -> None:
         )
         logger.warning(f'{get_user_string(message)} failed to get suggested training')
     # Send poll result
-    if await upload_poll_result(message, result):
-        logger.info(f'{get_user_string(message)} successfully sent suggest training poll result ({result})')
-    else:
-        logger.warning(f'{get_user_string(message)} failed to sent suggest training poll result')
+    # if await upload_poll_result(message, result):
+    #     logger.info(f'{get_user_string(message)} successfully sent suggest training poll result ({result})')
+    # else:
+    #     logger.warning(f'{get_user_string(message)} failed to sent suggest training poll result')
 
 
 @suggest_training_poll_router.message(SuggestTrainingPollStates.training, text == "объясни, что это значит")
